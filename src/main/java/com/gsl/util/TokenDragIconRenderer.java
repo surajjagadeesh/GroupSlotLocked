@@ -1,6 +1,7 @@
 package com.gsl.util;
 
 import com.gsl.model.SlotType;
+import com.gsl.model.TokenIconRenderContext;
 import com.gsl.model.TokenIconStyle;
 import com.gsl.service.SlotDisplayService;
 import com.gsl.util.BankItemUtils;
@@ -67,7 +68,7 @@ public final class TokenDragIconRenderer {
         widgetItem.getCanvasBounds(false),
         itemId,
         widgetItem.getQuantity(),
-        false);
+        TokenIconRenderContext.STATIC);
   }
 
   public static void renderWidgetItemIcon(
@@ -103,7 +104,7 @@ public final class TokenDragIconRenderer {
         graphics, client, itemManager, displayService, widgetItem, false)) {
       return;
     }
-    if (!isDraggedWidgetItem(client, widgetItem)) {
+    if (!shouldDrawDragGhost(client, widgetItem)) {
       return;
     }
     renderDragWidgetItemIconWithHeldFallback(
@@ -124,7 +125,7 @@ public final class TokenDragIconRenderer {
         graphics, client, itemManager, displayService, widgetItem, true)) {
       return;
     }
-    if (!isDraggedWidgetItem(client, widgetItem)) {
+    if (!shouldDrawDragGhost(client, widgetItem)) {
       return;
     }
     renderDragWidgetItemIconWithHeldFallback(
@@ -195,7 +196,7 @@ public final class TokenDragIconRenderer {
     if (!isStationaryHoldWidgetItem(client, widgetItem, bankMain)) {
       return false;
     }
-    HeldItemDetails held = resolveHeldItemDetails(client, client.getDraggedWidget());
+    HeldItemDetails held = resolveHeldItemDetails(client, itemManager, client.getDraggedWidget());
     if (held == null) {
       int itemId = widgetItem.getId();
       if (slotFromItemId(itemManager, itemId) == null) {
@@ -206,8 +207,19 @@ public final class TokenDragIconRenderer {
     if (slotFromItemId(itemManager, held.itemId) == null) {
       return false;
     }
+    held =
+        new HeldItemDetails(
+            held.itemId,
+            BankItemUtils.resolvePlaceholderDisplayQuantity(
+                itemManager, held.itemId, held.quantity));
     drawStationaryHoldAtWidget(
-        graphics, client, itemManager, displayService, held, widgetItem.getWidget());
+        graphics,
+        client,
+        itemManager,
+        displayService,
+        held,
+        widgetItem.getWidget(),
+        TokenIconRenderContext.PRESSED_IN_SLOT);
     return true;
   }
 
@@ -219,7 +231,8 @@ public final class TokenDragIconRenderer {
       Widget dragged,
       boolean bankMain) {
     if (needsSourceSlotHoldCover(client, dragged, bankMain)) {
-      drawStationaryHoldForDrag(graphics, client, itemManager, displayService, dragged);
+      drawStationaryHoldForDrag(
+          graphics, client, itemManager, displayService, dragged, bankMain);
     }
   }
 
@@ -301,14 +314,25 @@ public final class TokenDragIconRenderer {
       Client client,
       ItemManager itemManager,
       SlotDisplayService displayService,
-      Widget dragged) {
-    HeldItemDetails held = resolveHeldItemDetails(client, dragged);
+      Widget dragged,
+      boolean bankMain) {
+    HeldItemDetails held = resolveHeldItemDetails(client, itemManager, dragged);
     if (held == null || slotFromItemId(itemManager, held.itemId) == null) {
       return;
     }
     Widget heldSlot = resolveDraggedSlotWidget(client);
+    TokenIconRenderContext context =
+        isStationaryHoldDrag(client, dragged, bankMain)
+            ? TokenIconRenderContext.PRESSED_IN_SLOT
+            : TokenIconRenderContext.SOURCE_LAYER_COVER;
     drawStationaryHoldAtWidget(
-        graphics, client, itemManager, displayService, held, heldSlot != null ? heldSlot : dragged);
+        graphics,
+        client,
+        itemManager,
+        displayService,
+        held,
+        heldSlot != null ? heldSlot : dragged,
+        context);
   }
 
   private static void drawStationaryHoldAtWidget(
@@ -317,7 +341,8 @@ public final class TokenDragIconRenderer {
       ItemManager itemManager,
       SlotDisplayService displayService,
       HeldItemDetails held,
-      @Nullable Widget slotWidget) {
+      @Nullable Widget slotWidget,
+      TokenIconRenderContext context) {
     SlotType slot = slotFromItemId(itemManager, held.itemId);
     if (slot == null) {
       return;
@@ -332,7 +357,7 @@ public final class TokenDragIconRenderer {
           bounds,
           held.itemId,
           held.quantity,
-          true);
+          context);
     }
   }
 
@@ -345,7 +370,7 @@ public final class TokenDragIconRenderer {
       WidgetItem widgetItem) {
     int quantity = widgetItem.getQuantity();
     if (slotFromItemId(itemManager, itemId) == null) {
-      HeldItemDetails held = resolveHeldItemDetails(client, client.getDraggedWidget());
+      HeldItemDetails held = resolveHeldItemDetails(client, itemManager, client.getDraggedWidget());
       if (held == null || slotFromItemId(itemManager, held.itemId) == null) {
         return;
       }
@@ -369,41 +394,54 @@ public final class TokenDragIconRenderer {
     if (hit == null) {
       return false;
     }
-    HeldItemDetails held = resolveHeldItemDetails(client, null, hit);
+    HeldItemDetails held = resolveHeldItemDetails(client, itemManager, null, hit);
     if (held == null || slotFromItemId(itemManager, held.itemId) == null) {
       return false;
     }
-    drawStationaryHoldAtWidget(graphics, client, itemManager, displayService, held, hit);
+    drawStationaryHoldAtWidget(
+        graphics,
+        client,
+        itemManager,
+        displayService,
+        held,
+        hit,
+        TokenIconRenderContext.PRESSED_IN_SLOT);
     return true;
   }
 
   @Nullable
-  private static HeldItemDetails resolveHeldItemDetails(Client client, Widget dragged) {
-    return resolveHeldItemDetails(client, dragged, resolveDraggedSlotWidget(client));
+  private static HeldItemDetails resolveHeldItemDetails(
+      Client client, ItemManager itemManager, Widget dragged) {
+    return resolveHeldItemDetails(
+        client, itemManager, dragged, resolveDraggedSlotWidget(client));
   }
 
   @Nullable
   private static HeldItemDetails resolveHeldItemDetails(
-      Client client, @Nullable Widget dragged, @Nullable Widget heldSlot) {
-    int itemId = heldSlot != null ? heldSlot.getItemId() : -1;
-    int quantity = heldSlot != null ? heldSlot.getItemQuantity() : 0;
-    if (itemId <= 0 && dragged != null) {
+      Client client,
+      ItemManager itemManager,
+      @Nullable Widget dragged,
+      @Nullable Widget heldSlot) {
+    if (dragged != null) {
       ItemContainer container = containerForDragWidget(client, dragged.getId());
       if (container != null) {
         Item item = container.getItem(dragged.getIndex());
-        if (item != null) {
-          itemId = item.getId();
-          quantity = item.getQuantity();
+        if (item != null && item.getId() > 0) {
+          int quantity =
+              BankItemUtils.resolvePlaceholderDisplayQuantity(
+                  itemManager, item.getId(), item.getQuantity());
+          return new HeldItemDetails(item.getId(), quantity);
         }
       }
     }
-    if (itemId <= 0 && heldSlot != null) {
-      itemId = heldSlot.getItemId();
-      quantity = heldSlot.getItemQuantity();
-    }
+
+    int itemId = heldSlot != null ? heldSlot.getItemId() : -1;
+    int quantity = heldSlot != null ? heldSlot.getItemQuantity() : 0;
     if (itemId <= 0) {
       return null;
     }
+    quantity =
+        BankItemUtils.resolvePlaceholderDisplayQuantity(itemManager, itemId, quantity);
     return new HeldItemDetails(itemId, quantity);
   }
 
@@ -440,7 +478,7 @@ public final class TokenDragIconRenderer {
       SlotDisplayService displayService,
       int itemId,
       WidgetItem widgetItem) {
-    if (!isDraggedWidgetItem(client, widgetItem)
+    if (!shouldDrawDragGhost(client, widgetItem)
         || isBankMainSourceWidget(widgetItem.getWidget())) {
       return;
     }
@@ -454,7 +492,7 @@ public final class TokenDragIconRenderer {
       SlotDisplayService displayService,
       int itemId,
       WidgetItem widgetItem) {
-    if (!isDraggedWidgetItem(client, widgetItem)
+    if (!shouldDrawDragGhost(client, widgetItem)
         || !isBankMainSourceWidget(widgetItem.getWidget())) {
       return;
     }
@@ -503,7 +541,7 @@ public final class TokenDragIconRenderer {
           dragBounds,
           itemId,
           quantity,
-          true);
+          TokenIconRenderContext.DRAG_AT_CURSOR);
     }
   }
 
@@ -513,6 +551,25 @@ public final class TokenDragIconRenderer {
 
   private static boolean isDraggedWidgetItem(Client client, WidgetItem widgetItem) {
     return widgetItem.getDraggingCanvasBounds() != null;
+  }
+
+  private static boolean shouldDrawDragGhost(Client client, WidgetItem widgetItem) {
+    if (widgetItem.getDraggingCanvasBounds() != null) {
+      return true;
+    }
+    Widget draggedSlot = resolveDraggedSlotWidget(client);
+    Widget itemWidget = widgetItem.getWidget();
+    if (draggedSlot == null || itemWidget == null || draggedSlot != itemWidget) {
+      return false;
+    }
+    Widget dragged = client.getDraggedWidget();
+    if (dragged != null && isInventoryDragContainer(dragged)) {
+      return hasVisualInventoryDragStarted(client, dragged);
+    }
+    if (dragged != null && isBankMainDragSource(dragged)) {
+      return hasVisualBankDragStarted(client, dragged);
+    }
+    return false;
   }
 
   private static boolean shouldHideStaticIconDuringDrag(Client client, WidgetItem widgetItem) {
@@ -634,7 +691,15 @@ public final class TokenDragIconRenderer {
       Rectangle bounds,
       int itemId,
       int quantity) {
-    drawTokenIcon(graphics, itemManager, displayService, slot, bounds, itemId, quantity, false);
+    drawTokenIcon(
+        graphics,
+        itemManager,
+        displayService,
+        slot,
+        bounds,
+        itemId,
+        quantity,
+        TokenIconRenderContext.STATIC);
   }
 
   public static void drawTokenIcon(
@@ -645,16 +710,20 @@ public final class TokenDragIconRenderer {
       Rectangle bounds,
       int itemId,
       int quantity,
-      boolean dragging) {
+      TokenIconRenderContext context) {
     if (bounds == null) {
       return;
     }
-    boolean placeholder = BankItemUtils.isPlaceholderItem(itemManager, itemId, quantity);
-    displayService.drawReplacementIcon(graphics, slot, bounds, TokenIconStyle.NORMAL);
+    int displayQuantity =
+        BankItemUtils.resolvePlaceholderDisplayQuantity(itemManager, itemId, quantity);
+    boolean placeholder =
+        BankItemUtils.isPlaceholderItem(itemManager, itemId, displayQuantity);
+    TokenIconStyle style = TokenIconStyle.forContext(context, placeholder);
+    displayService.drawReplacementIcon(graphics, slot, bounds, style);
     if (placeholder) {
-      displayService.drawPlaceholderQuantity(graphics, bounds, quantity);
+      displayService.drawPlaceholderQuantity(graphics, bounds, displayQuantity);
     } else {
-      displayService.drawItemQuantity(graphics, bounds, quantity);
+      displayService.drawItemQuantity(graphics, bounds, displayQuantity);
     }
   }
 
@@ -705,7 +774,7 @@ public final class TokenDragIconRenderer {
             bounds,
             child.getItemId(),
             child.getItemQuantity(),
-            true);
+            TokenIconRenderContext.DRAG_AT_CURSOR);
         drew = true;
       }
     }

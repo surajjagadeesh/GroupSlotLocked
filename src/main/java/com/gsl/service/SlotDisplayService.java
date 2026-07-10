@@ -4,8 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.gsl.GroupSlotLockedConfig;
 import com.gsl.model.SlotType;
+import com.gsl.model.TokenIconRenderContext;
 import com.gsl.model.TokenIconStyle;
-import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -33,6 +33,7 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.api.Point;
 import net.runelite.client.ui.overlay.OverlayUtil;
+import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.QuantityFormatter;
@@ -158,15 +159,16 @@ public class SlotDisplayService {
 
   private static BufferedImage composeOpaqueIcon(
       BufferedImage icon, int size, TokenIconStyle style) {
-    BufferedImage composed = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
+    BufferedImage source = icon;
+    float luminanceScale = style.getLuminanceScale();
+    if (luminanceScale < 1.0f) {
+      source = ImageUtil.luminanceScale(icon, luminanceScale);
+    }
+    BufferedImage composed = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
     Graphics2D iconGraphics = composed.createGraphics();
     iconGraphics.setColor(style.getBackground());
     iconGraphics.fillRect(0, 0, size, size);
-    if (style.getIconAlpha() < 1.0f) {
-      iconGraphics.setComposite(
-          AlphaComposite.getInstance(AlphaComposite.SRC_OVER, style.getIconAlpha()));
-    }
-    iconGraphics.drawImage(icon, 0, 0, size, size, null);
+    iconGraphics.drawImage(source, 0, 0, size, size, null);
     iconGraphics.dispose();
     return composed;
   }
@@ -187,7 +189,7 @@ public class SlotDisplayService {
     if (quantity == 1) {
       return;
     }
-    String text = QuantityFormatter.quantityToRSDecimalStack(quantity);
+    String text = quantity <= 0 ? "0" : QuantityFormatter.quantityToRSDecimalStack(quantity);
     Font font = FontManager.getRunescapeSmallFont();
     graphics.setFont(font);
     FontMetrics metrics = graphics.getFontMetrics();

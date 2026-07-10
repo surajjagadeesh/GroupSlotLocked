@@ -17,6 +17,21 @@ public final class BankItemUtils {
     return itemManager.getItemComposition(itemId).getPlaceholderTemplateId() != -1;
   }
 
+  /** Bank placeholders often store quantity 1 internally while the UI shows 0. */
+  public static int resolvePlaceholderDisplayQuantity(
+      ItemManager itemManager, int itemId, int quantity) {
+    if (itemId <= 0) {
+      return quantity;
+    }
+    if (quantity <= 0) {
+      return 0;
+    }
+    if (itemManager.getItemComposition(itemId).getPlaceholderTemplateId() != -1) {
+      return 0;
+    }
+    return quantity;
+  }
+
   @Nullable
   public static SlotType resolveSlotType(ItemManager itemManager, int itemId) {
     if (itemId <= 0) {
