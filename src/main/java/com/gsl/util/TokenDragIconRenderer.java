@@ -137,7 +137,7 @@ public final class TokenDragIconRenderer {
       Client client,
       ItemManager itemManager,
       SlotDisplayService displayService) {
-    if (client.getMouseCurrentButton() == 0) {
+    if (!isLeftClickPressHold(client)) {
       clearInventoryHoldAnchor();
       clearBankHoldAnchor();
       clearDragHandoffState();
@@ -237,7 +237,7 @@ public final class TokenDragIconRenderer {
   }
 
   private static boolean needsSourceSlotHoldCover(Client client, Widget dragged, boolean bankMain) {
-    if (client.getMouseCurrentButton() == 0) {
+    if (!isLeftClickPressHold(client)) {
       return false;
     }
     if (bankMain) {
@@ -283,7 +283,7 @@ public final class TokenDragIconRenderer {
 
   private static boolean isStationaryHoldWidgetItem(
       Client client, WidgetItem widgetItem, boolean bankMain) {
-    if (client.getMouseCurrentButton() == 0) {
+    if (!isLeftClickPressHold(client)) {
       return false;
     }
     Widget itemWidget = widgetItem.getWidget();
@@ -979,5 +979,10 @@ public final class TokenDragIconRenderer {
   @Nullable
   private static SlotType slotFromItemId(ItemManager itemManager, int itemId) {
     return BankItemUtils.resolveSlotType(itemManager, itemId);
+  }
+
+  /** Press/dim styling is for left-click hold and drag only, not right-click menus. */
+  private static boolean isLeftClickPressHold(Client client) {
+    return !client.isMenuOpen() && client.getMouseCurrentButton() == 1;
   }
 }

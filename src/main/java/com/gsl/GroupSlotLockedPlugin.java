@@ -2,6 +2,7 @@ package com.gsl;
 
 import com.google.inject.Provides;
 import com.gsl.menu.SlotMenuHandler;
+import com.gsl.menu.TokenBankSearchHandler;
 import com.gsl.overlay.ItemRestrictionOverlay;
 import com.gsl.overlay.TokenBankDragOverlay;
 import com.gsl.overlay.TokenInventoryDragOverlay;
@@ -45,6 +46,7 @@ public class GroupSlotLockedPlugin extends Plugin {
   @Inject private SlotStateService slotStateService;
   @Inject private ViolationNotifier violationNotifier;
   @Inject private SlotMenuHandler slotMenuHandler;
+  @Inject private TokenBankSearchHandler tokenBankSearchHandler;
   @Inject private ItemRestrictionOverlay itemRestrictionOverlay;
   @Inject private TokenInventoryDragOverlay tokenInventoryDragOverlay;
   @Inject private TokenBankDragOverlay tokenBankDragOverlay;
@@ -87,6 +89,7 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.add(tokenTooltipOverlay);
     overlayManager.add(violationOverlay);
     eventBus.register(slotMenuHandler);
+    eventBus.register(tokenBankSearchHandler);
     slotStateService.addListener(violationNotifier::onStateChanged);
     clientThread.invoke(
         () -> {
@@ -107,6 +110,7 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.remove(tokenTooltipOverlay);
     overlayManager.remove(violationOverlay);
     eventBus.unregister(slotMenuHandler);
+    eventBus.unregister(tokenBankSearchHandler);
     slotStateService.removeListener(violationNotifier::onStateChanged);
     violationNotifier.reset();
     log.debug("Group Slot Locked stopped");

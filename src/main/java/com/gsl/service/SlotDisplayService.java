@@ -18,8 +18,11 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
@@ -106,6 +109,65 @@ public class SlotDisplayService {
       return QuantityFormatter.formatNumber(quantity) + " x " + label;
     }
     return label;
+  }
+
+  /**
+   * Returns true when a bank search string should match this slot token, using the same substring
+   * rules as vanilla item-name search ({@code label.contains(search)}).
+   */
+  public boolean matchesBankSearch(SlotType slot, String search) {
+    if (slot == null || search == null) {
+      return false;
+    }
+    String needle = search.trim().toLowerCase(Locale.ENGLISH);
+    if (needle.isEmpty()) {
+      return false;
+    }
+    for (String label : getBankSearchLabels(slot)) {
+      if (label.toLowerCase(Locale.ENGLISH).contains(needle)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Searchable names for all 11 slot tokens in bank search. */
+  public List<String> getBankSearchLabels(SlotType slot) {
+    List<String> labels = new ArrayList<>();
+    String displayName = getDisplayName(slot);
+    labels.add(displayName);
+    labels.add(displayName + " slot");
+    labels.add(getHoverTargetText(slot, 1));
+    labels.add(slot.name().toLowerCase(Locale.ENGLISH));
+    labels.add(slot.name().toLowerCase(Locale.ENGLISH).replace('_', ' '));
+    labels.add(slot.getDefaultDisplayName().toLowerCase(Locale.ENGLISH));
+    labels.add(slot.getDefaultAbbrev().toLowerCase(Locale.ENGLISH));
+    addBankSearchSynonyms(slot, labels);
+    return labels;
+  }
+
+  private static void addBankSearchSynonyms(SlotType slot, List<String> labels) {
+    switch (slot) {
+      case NECK:
+        labels.add("amulet");
+        break;
+      case MAIN_HAND:
+        labels.add("weapon");
+        labels.add("mainhand");
+        break;
+      case OFF_HAND:
+        labels.add("shield");
+        labels.add("offhand");
+        break;
+      case GLOVES:
+        labels.add("hands");
+        break;
+      case BOOTS:
+        labels.add("feet");
+        break;
+      default:
+        break;
+    }
   }
 
   public String getExamineOptionText(SlotType slot) {

@@ -19,17 +19,27 @@ public final class TokenItemWidgetScopes {
   }
 
   /**
-   * Bank interfaces where withdraw/deposit left-click should stay vanilla. Hover targets are still
-   * replaced with slot labels.
+   * Player inventory panel while the bank is open (deposit actions).
    */
-  public static boolean isTokenBankActionContext(MenuEntry entry) {
+  public static boolean isTokenBankDepositContext(MenuEntry entry) {
     int componentId = resolveComponentId(entry);
     return componentId == InterfaceID.Bankside.ITEMS
-        || componentId == InterfaceID.Bankmain.ITEMS
+        || componentId == InterfaceID.SharedBankSide.ITEMS;
+  }
+
+  /**
+   * Bank item grid (withdraw actions).
+   */
+  public static boolean isTokenBankWithdrawContext(MenuEntry entry) {
+    int componentId = resolveComponentId(entry);
+    return componentId == InterfaceID.Bankmain.ITEMS
         || componentId == InterfaceID.Bankmain.BANKTAGS_DISPLAY_ITEMS
         || componentId == InterfaceID.SharedBank.ITEMS
-        || componentId == InterfaceID.SharedBank.MAIN_BANK
-        || componentId == InterfaceID.SharedBankSide.ITEMS;
+        || componentId == InterfaceID.SharedBank.MAIN_BANK;
+  }
+
+  public static boolean isTokenBankActionContext(MenuEntry entry) {
+    return isTokenBankDepositContext(entry) || isTokenBankWithdrawContext(entry);
   }
 
   /**

@@ -11,13 +11,17 @@ import com.gsl.util.BankItemUtils;
 import com.gsl.util.TokenItemWidgetScopes;
 import java.util.Locale;
 import java.util.Set;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.ChatLineBuffer;
 import net.runelite.api.Client;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.MessageNode;
+import net.runelite.api.events.BeforeRender;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.MenuEntryAdded;
@@ -25,7 +29,10 @@ import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.events.ScriptCallbackEvent;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.eventbus.Subscribe;
@@ -97,7 +104,7 @@ public class SlotMenuHandler {
     boolean changed = false;
     for (int i = 0; i < entries.length; i++) {
       MenuEntry entry = entries[i];
-      int itemId = resolveItemId(entry, entry.getItemId());
+      int itemId = resolveItemId(entry);
       if (itemId <= 0) {
         continue;
       }
@@ -121,12 +128,29 @@ public class SlotMenuHandler {
     }
   }
 
-  @Subscribe(priority = 1)
+  @Subscribe(priority = Short.MIN_VALUE)
+  public void onBeforeRender(BeforeRender event) {
+    if (!config.enablePlugin() || client.isMenuOpen()) {
+      return;
+    }
+    MenuEntry[] entries = client.getMenuEntries();
+    if (entries.length == 0) {
+      return;
+    }
+    if (applyTopHoverLabel(entries[entries.length - 1])) {
+      client.setMenuEntries(entries);
+    }
+  }
+
+  @Subscribe(priority = Short.MIN_VALUE)
   public void onPostMenuSort(PostMenuSort event) {
     if (!config.enablePlugin() || client.isMenuOpen()) {
       return;
     }
-    applyTokenMenuChanges(client.getMenuEntries());
+    MenuEntry[] entries = client.getMenuEntries();
+    if (applyTokenMenuChanges(entries)) {
+      client.setMenuEntries(entries);
+    }
   }
 
   @Subscribe
@@ -135,7 +159,7 @@ public class SlotMenuHandler {
       return;
     }
     MenuEntry entry = event.getMenuEntry();
-    int itemId = resolveItemId(entry, entry.getItemId());
+    int itemId = resolveItemId(entry);
     if (itemId <= 0) {
       return;
     }
@@ -167,6 +191,17 @@ public class SlotMenuHandler {
     if (pendingSuppressTokenExamineItemId > 0
         && client.getTickCount() > pendingSuppressTokenExamineUntilTick) {
       clearPendingTokenExamineSuppression();
+    }
+
+    if (!config.enablePlugin() || client.isMenuOpen()) {
+      return;
+    }
+    MenuEntry[] entries = client.getMenuEntries();
+    if (entries.length == 0) {
+      return;
+    }
+    if (applyTopHoverLabel(entries[entries.length - 1])) {
+      client.setMenuEntries(entries);
     }
   }
 
@@ -227,11 +262,6 @@ public class SlotMenuHandler {
     if (shouldDeprioritizeTokenOption(entry.getOption())) {
       entry.setDeprioritized(true);
     }
-    if (isPreferredTokenOption(entry, config.tokenLeftClick())) {
-      if (config.tokenLeftClick() == TokenLeftClick.EXAMINE && isExamineEntry(entry)) {
-        applyTokenSlotMenuText(entry, slot);
-      }
-    }
   }
 
   private boolean handleTokenMenuOpenedEntry(
@@ -254,9 +284,8 @@ public class SlotMenuHandler {
     return changed;
   }
 
-  private void applyTokenMenuChanges(MenuEntry[] entries) {
+  private boolean applyTokenMenuChanges(MenuEntry[] entries) {
     int preferredIndex = -1;
-    SlotType slot = null;
     boolean changed = false;
     boolean reorderContext = false;
 
@@ -265,34 +294,23 @@ public class SlotMenuHandler {
       if (!TokenItemWidgetScopes.isTokenItemMenuContext(entry)) {
         continue;
       }
-      int itemId = resolveItemId(entry, entry.getItemId());
-      SlotType entrySlot = resolveTokenSlot(itemId);
-      if (entrySlot == null) {
+      if (resolveTokenSlot(resolveItemId(entry)) == null) {
         continue;
       }
-      if (slot == null) {
-        slot = entrySlot;
-      }
-      if (applyTokenHoverTarget(entry, entrySlot)) {
-        changed = true;
-      }
-
       if (!TokenItemWidgetScopes.isTokenLeftClickReorderContext(entry)) {
         continue;
       }
       reorderContext = true;
       if (shouldDeprioritizeTokenOption(entry.getOption())) {
         entry.setDeprioritized(true);
+        changed = true;
       }
       if (isPreferredTokenOption(entry, config.tokenLeftClick())) {
         preferredIndex = i;
       }
     }
 
-    if (reorderContext && preferredIndex >= 0 && slot != null) {
-      if (config.tokenLeftClick() == TokenLeftClick.EXAMINE && isExamineEntry(entries[preferredIndex])) {
-        applyTokenSlotMenuText(entries[preferredIndex], slot);
-      }
+    if (reorderContext && preferredIndex >= 0) {
       if (preferredIndex < entries.length - 1) {
         promoteEntry(entries, preferredIndex);
       }
@@ -302,9 +320,59 @@ public class SlotMenuHandler {
       changed = true;
     }
 
-    if (changed) {
-      client.setMenuEntries(entries);
+    if (applyTopHoverLabel(entries[entries.length - 1])) {
+      changed = true;
     }
+
+    return changed;
+  }
+
+  /** Updates the top menu row used for the hover bar. Returns true if option/target changed. */
+  private boolean applyTopHoverLabel(MenuEntry top) {
+    if (!TokenItemWidgetScopes.isTokenItemMenuContext(top)) {
+      return false;
+    }
+    SlotType slot = resolveTokenSlot(resolveItemId(top));
+    if (slot == null) {
+      return false;
+    }
+
+    String option = top.getOption();
+    String target = getColoredSlotTarget(top, slot);
+    if (isExamineEntry(top)) {
+      option = getExamineVerb(top);
+    }
+
+    if (option.equals(top.getOption()) && target.equals(top.getTarget())) {
+      return false;
+    }
+
+    top.setOption(option);
+    top.setTarget(target);
+    return true;
+  }
+
+  private static void promoteEntry(MenuEntry[] entries, int index) {
+    if (index < 0 || index >= entries.length - 1) {
+      return;
+    }
+    MenuEntry promoted = entries[index];
+    System.arraycopy(entries, index + 1, entries, index, entries.length - index - 1);
+    entries[entries.length - 1] = promoted;
+  }
+
+  /**
+   * Examine is added as {@link MenuAction#CC_OP_LOW_PRIORITY}, which is right-click only even when
+   * promoted to the top of the menu. Upgrade it so left-click executes instead of opening the menu.
+   */
+  private static void prepareExamineForLeftClick(MenuEntry entry) {
+    if (entry == null || !isExamineEntry(entry)) {
+      return;
+    }
+    if (entry.getType() == MenuAction.CC_OP_LOW_PRIORITY) {
+      entry.setType(MenuAction.CC_OP);
+    }
+    entry.setForceLeftClick(true);
   }
 
   private boolean shouldDeprioritizeTokenOption(String option) {
@@ -341,7 +409,7 @@ public class SlotMenuHandler {
   }
 
   private int resolveEntryQuantity(MenuEntry entry) {
-    Widget widget = entry.getWidget();
+    Widget widget = resolveItemWidget(entry);
     if (widget == null) {
       return 1;
     }
@@ -355,6 +423,16 @@ public class SlotMenuHandler {
         applyTokenExamineMenuText(entry, slot);
         return true;
       }
+      // Keep Withdraw-1 / Deposit-1; replace cape name with orange slot label.
+      entry.setTarget(getColoredSlotTarget(entry, slot));
+      return true;
+    }
+
+    if (TokenItemWidgetScopes.isTokenLeftClickReorderContext(entry)) {
+      if (isExamineEntry(entry)) {
+        applyTokenExamineMenuText(entry, slot);
+        return true;
+      }
       entry.setTarget(getColoredSlotTarget(entry, slot));
       return true;
     }
@@ -364,8 +442,7 @@ public class SlotMenuHandler {
       return true;
     }
 
-    String slotLabel = displayService.getHoverTargetText(slot, resolveEntryQuantity(entry));
-    entry.setTarget(ColorUtil.wrapWithColorTag(slotLabel, JagexColors.MENU_TARGET));
+    entry.setTarget(getColoredSlotTarget(entry, slot));
     return true;
   }
 
@@ -373,35 +450,125 @@ public class SlotMenuHandler {
     return BankItemUtils.resolveSlotType(itemManager, itemId);
   }
 
-  private static int resolveItemId(MenuEntry entry, int itemId) {
+  private int resolveItemId(MenuEntry entry) {
+    return resolveItemId(entry, entry.getItemId());
+  }
+
+  private int resolveItemId(MenuEntry entry, int fallbackItemId) {
+    if (fallbackItemId > 0) {
+      return fallbackItemId;
+    }
+    int itemId = entry.getItemId();
     if (itemId > 0) {
       return itemId;
     }
     Widget widget = entry.getWidget();
-    return widget != null ? widget.getItemId() : -1;
+    if (widget != null) {
+      itemId = resolveItemIdFromWidget(widget);
+      if (itemId > 0) {
+        return itemId;
+      }
+    }
+    itemId = resolveItemIdFromContainer(entry);
+    if (itemId > 0) {
+      return itemId;
+    }
+    widget = resolveItemWidget(entry);
+    if (widget != null) {
+      itemId = widget.getItemId();
+      if (itemId > 0) {
+        return itemId;
+      }
+    }
+    int widgetId = entry.getParam1();
+    int childIndex = entry.getParam0();
+    if (widgetId <= 0) {
+      return -1;
+    }
+    Widget container = client.getWidget(widgetId);
+    if (container == null) {
+      return -1;
+    }
+    Widget child = container.getChild(childIndex);
+    return child != null ? child.getItemId() : -1;
   }
 
-  private static void promoteEntry(MenuEntry[] entries, int index) {
-    if (index < 0 || index >= entries.length - 1) {
-      return;
+  @Nullable
+  private Widget resolveItemWidget(MenuEntry entry) {
+    Widget widget = entry.getWidget();
+    if (widget != null && widget.getItemId() > 0) {
+      return widget;
     }
-    MenuEntry promoted = entries[index];
-    System.arraycopy(entries, index + 1, entries, index, entries.length - index - 1);
-    entries[entries.length - 1] = promoted;
+    int componentId = entry.getParam1();
+    int slot = entry.getParam0();
+    if (componentId <= 0 || slot < 0) {
+      return widget;
+    }
+    Widget container = client.getWidget(componentId);
+    if (container == null) {
+      return widget;
+    }
+    Widget[] dynamic = container.getDynamicChildren();
+    if (dynamic != null && slot < dynamic.length) {
+      Widget dynamicChild = dynamic[slot];
+      if (dynamicChild != null) {
+        return dynamicChild;
+      }
+    }
+    Widget child = container.getChild(slot);
+    return child != null ? child : widget;
   }
 
-  /**
-   * Examine is added as {@link MenuAction#CC_OP_LOW_PRIORITY}, which is right-click only even when
-   * promoted to the top of the menu. Upgrade it so left-click executes instead of opening the menu.
-   */
-  private static void prepareExamineForLeftClick(MenuEntry entry) {
-    if (entry == null || !isExamineEntry(entry)) {
-      return;
+  private ItemContainer containerForComponent(int componentId) {
+    if (componentId == InterfaceID.Inventory.ITEMS
+        || componentId == InterfaceID.Bankside.ITEMS
+        || componentId == InterfaceID.SharedBankSide.ITEMS) {
+      return client.getItemContainer(InventoryID.INV);
     }
-    if (entry.getType() == MenuAction.CC_OP_LOW_PRIORITY) {
-      entry.setType(MenuAction.CC_OP);
+    if (componentId == InterfaceID.Bankmain.ITEMS
+        || componentId == InterfaceID.Bankmain.BANKTAGS_DISPLAY_ITEMS) {
+      return client.getItemContainer(InventoryID.BANK);
     }
-    entry.setForceLeftClick(true);
+    if (componentId == InterfaceID.SharedBank.ITEMS
+        || componentId == InterfaceID.SharedBank.MAIN_BANK) {
+      return client.getItemContainer(InventoryID.INV_GROUP_TEMP);
+    }
+    return null;
+  }
+
+  private int resolveItemIdFromContainer(MenuEntry entry) {
+    int componentId = entry.getParam1();
+    int slot = entry.getParam0();
+    if (componentId <= 0 || slot < 0) {
+      return -1;
+    }
+    ItemContainer container = containerForComponent(componentId);
+    if (container == null) {
+      return -1;
+    }
+    Item item = container.getItem(slot);
+    return item != null ? item.getId() : -1;
+  }
+
+  private static int resolveItemIdFromWidget(Widget widget) {
+    int group = WidgetUtil.componentToInterface(widget.getId());
+    if (group == InterfaceID.WORNITEMS
+        || (group == InterfaceID.BANKMAIN
+            && widget.getParentId() == InterfaceID.Bankside.WORNOPS)) {
+      Widget itemWidget = widget.getChild(1);
+      return itemWidget != null ? itemWidget.getItemId() : -1;
+    }
+
+    if (widget.getId() == InterfaceID.Inventory.ITEMS
+        || group == InterfaceID.EQUIPMENT_SIDE
+        || widget.getId() == InterfaceID.Bankmain.ITEMS
+        || group == InterfaceID.BANKSIDE
+        || widget.getId() == InterfaceID.SharedBank.ITEMS
+        || group == InterfaceID.SHARED_BANK_SIDE) {
+      return widget.getItemId();
+    }
+
+    return widget.getItemId();
   }
 
   private static boolean isPreferredTokenOption(MenuEntry entry, TokenLeftClick preferred) {
