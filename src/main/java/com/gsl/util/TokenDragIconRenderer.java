@@ -25,6 +25,8 @@ public final class TokenDragIconRenderer {
   private static int inventoryHoldAnchorSourceId = -1;
   private static Point bankHoldAnchorMouse;
   private static int bankHoldAnchorSourceId = -1;
+  private static boolean dragHandoffReady;
+  private static int dragHandoffSourceId = -1;
   private static final int DRAG_MOVE_THRESHOLD_SQ = 4;
   private static final int[] BANK_ITEM_CONTAINERS = {
     InterfaceID.Bankmain.ITEMS,
@@ -80,7 +82,7 @@ public final class TokenDragIconRenderer {
       return;
     }
 
-    if (isDraggedWidgetItem(client, widgetItem)) {
+    if (shouldHideStaticIconDuringDrag(client, widgetItem)) {
       return;
     }
 
@@ -101,10 +103,10 @@ public final class TokenDragIconRenderer {
         graphics, client, itemManager, displayService, widgetItem, false)) {
       return;
     }
-    if (slotFromItemId(itemManager, itemId) == null) {
+    if (!isDraggedWidgetItem(client, widgetItem)) {
       return;
     }
-    renderInventoryDragWidgetItemIcon(
+    renderDragWidgetItemIconWithHeldFallback(
         graphics, client, itemManager, displayService, itemId, widgetItem);
   }
 
@@ -122,10 +124,10 @@ public final class TokenDragIconRenderer {
         graphics, client, itemManager, displayService, widgetItem, true)) {
       return;
     }
-    if (slotFromItemId(itemManager, itemId) == null) {
+    if (!isDraggedWidgetItem(client, widgetItem)) {
       return;
     }
-    renderBankDragWidgetItemIcon(
+    renderDragWidgetItemIconWithHeldFallback(
         graphics, client, itemManager, displayService, itemId, widgetItem);
   }
 
@@ -137,15 +139,16 @@ public final class TokenDragIconRenderer {
     if (client.getMouseCurrentButton() == 0) {
       clearInventoryHoldAnchor();
       clearBankHoldAnchor();
+      clearDragHandoffState();
       return;
     }
 
     Widget dragged = client.getDraggedWidget();
     if (dragged != null) {
-      if (isInventoryDragContainer(dragged) && isStationaryHoldDrag(client, dragged, false)) {
-        drawStationaryHoldForDrag(graphics, client, itemManager, displayService, dragged);
-      } else if (isBankMainDragSource(dragged) && isStationaryHoldDrag(client, dragged, true)) {
-        drawStationaryHoldForDrag(graphics, client, itemManager, displayService, dragged);
+      if (isInventoryDragContainer(dragged)) {
+        renderSourceSlotHoldCover(graphics, client, itemManager, displayService, dragged, false);
+      } else if (isBankMainDragSource(dragged)) {
+        renderSourceSlotHoldCover(graphics, client, itemManager, displayService, dragged, true);
       }
       return;
     }
@@ -208,11 +211,61 @@ public final class TokenDragIconRenderer {
     return true;
   }
 
-  private static boolean isStationaryHoldDrag(Client client, Widget dragged, boolean bankMain) {
-    if (bankMain) {
-      return !hasVisualBankDragStarted(client, dragged);
+  private static void renderSourceSlotHoldCover(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      Widget dragged,
+      boolean bankMain) {
+    if (needsSourceSlotHoldCover(client, dragged, bankMain)) {
+      drawStationaryHoldForDrag(graphics, client, itemManager, displayService, dragged);
     }
-    return !hasVisualInventoryDragStarted(client, dragged);
+  }
+
+  private static boolean needsSourceSlotHoldCover(Client client, Widget dragged, boolean bankMain) {
+    if (client.getMouseCurrentButton() == 0) {
+      return false;
+    }
+    if (bankMain) {
+      if (!isBankMainDragSource(dragged)) {
+        return false;
+      }
+    } else if (!isInventoryDragContainer(dragged)) {
+      return false;
+    }
+    return !isDragHandoffReady(client);
+  }
+
+  private static boolean isDragHandoffReady(Client client) {
+    Widget dragged = client.getDraggedWidget();
+    if (dragged == null || !dragHandoffReady) {
+      return false;
+    }
+    return dragHandoffSourceId == (dragged.getId() << 16 | dragged.getIndex());
+  }
+
+  private static void markDragHandoffReady(Client client) {
+    Widget dragged = client.getDraggedWidget();
+    if (dragged == null) {
+      return;
+    }
+    dragHandoffReady = true;
+    dragHandoffSourceId = dragged.getId() << 16 | dragged.getIndex();
+  }
+
+  private static void clearDragHandoffState() {
+    dragHandoffReady = false;
+    dragHandoffSourceId = -1;
+  }
+
+  private static boolean isStationaryHoldDrag(Client client, Widget dragged, boolean bankMain) {
+    if (!needsSourceSlotHoldCover(client, dragged, bankMain)) {
+      return false;
+    }
+    return bankMain
+        ? !hasVisualBankDragStarted(client, dragged)
+        : !hasVisualInventoryDragStarted(client, dragged);
   }
 
   private static boolean isStationaryHoldWidgetItem(
@@ -269,10 +322,7 @@ public final class TokenDragIconRenderer {
     if (slot == null) {
       return;
     }
-    Rectangle bounds = resolveActiveDragBounds(client, slotWidget);
-    if (bounds == null && slotWidget != null) {
-      bounds = getWidgetCanvasBounds(client, slotWidget);
-    }
+    Rectangle bounds = slotWidget != null ? getWidgetCanvasBounds(client, slotWidget) : null;
     if (bounds != null) {
       drawTokenIcon(
           graphics,
@@ -284,6 +334,26 @@ public final class TokenDragIconRenderer {
           held.quantity,
           true);
     }
+  }
+
+  private static void renderDragWidgetItemIconWithHeldFallback(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      int itemId,
+      WidgetItem widgetItem) {
+    int quantity = widgetItem.getQuantity();
+    if (slotFromItemId(itemManager, itemId) == null) {
+      HeldItemDetails held = resolveHeldItemDetails(client, client.getDraggedWidget());
+      if (held == null || slotFromItemId(itemManager, held.itemId) == null) {
+        return;
+      }
+      itemId = held.itemId;
+      quantity = held.quantity;
+    }
+    renderDragWidgetItemIcon(
+        graphics, client, itemManager, displayService, itemId, quantity, widgetItem);
   }
 
   private static boolean drawStationaryHoldAtContainer(
@@ -398,6 +468,18 @@ public final class TokenDragIconRenderer {
       SlotDisplayService displayService,
       int itemId,
       WidgetItem widgetItem) {
+    renderDragWidgetItemIcon(
+        graphics, client, itemManager, displayService, itemId, widgetItem.getQuantity(), widgetItem);
+  }
+
+  private static void renderDragWidgetItemIcon(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      int itemId,
+      int quantity,
+      WidgetItem widgetItem) {
     SlotType slot = slotFromItemId(itemManager, itemId);
     if (slot == null) {
       return;
@@ -410,6 +492,9 @@ public final class TokenDragIconRenderer {
               client, widgetItem.getWidget(), widgetItem.getCanvasBounds(false));
     }
     if (dragBounds != null) {
+      if (widgetItem.getDraggingCanvasBounds() != null) {
+        markDragHandoffReady(client);
+      }
       drawTokenIcon(
           graphics,
           itemManager,
@@ -417,7 +502,7 @@ public final class TokenDragIconRenderer {
           slot,
           dragBounds,
           itemId,
-          widgetItem.getQuantity(),
+          quantity,
           true);
     }
   }
@@ -427,6 +512,10 @@ public final class TokenDragIconRenderer {
   }
 
   private static boolean isDraggedWidgetItem(Client client, WidgetItem widgetItem) {
+    return widgetItem.getDraggingCanvasBounds() != null;
+  }
+
+  private static boolean shouldHideStaticIconDuringDrag(Client client, WidgetItem widgetItem) {
     if (widgetItem.getDraggingCanvasBounds() != null) {
       return true;
     }
@@ -436,13 +525,11 @@ public final class TokenDragIconRenderer {
       return false;
     }
     Widget dragged = client.getDraggedWidget();
-    if (dragged != null && isInventoryDragContainer(dragged)) {
-      return hasVisualInventoryDragStarted(client, dragged);
+    if (dragged == null) {
+      return false;
     }
-    if (dragged != null && isBankMainDragSource(dragged)) {
-      return hasVisualBankDragStarted(client, dragged);
-    }
-    return true;
+    boolean bankMain = isBankMainSourceWidget(itemWidget);
+    return needsSourceSlotHoldCover(client, dragged, bankMain);
   }
 
   @Nullable
@@ -703,7 +790,8 @@ public final class TokenDragIconRenderer {
 
     int sourceId = dragged.getId() << 16 | dragged.getIndex();
     if (dragGrabOffset == null || dragGrabSourceId != sourceId) {
-      Point mouse = client.getMouseCanvasPosition();
+      Point anchor = getHoldAnchorMouse(client, dragged);
+      Point mouse = anchor != null ? anchor : client.getMouseCanvasPosition();
       if (mouse != null && slotBounds != null) {
         dragGrabOffset = new Point(mouse.getX() - slotBounds.x, mouse.getY() - slotBounds.y);
       } else {
@@ -713,6 +801,21 @@ public final class TokenDragIconRenderer {
     }
 
     return dragGrabOffset;
+  }
+
+  @Nullable
+  private static Point getHoldAnchorMouse(Client client, Widget dragged) {
+    int sourceId = dragged.getId() << 16 | dragged.getIndex();
+    if (isInventoryDragContainer(dragged)) {
+      if (inventoryHoldAnchorMouse != null && inventoryHoldAnchorSourceId == sourceId) {
+        return inventoryHoldAnchorMouse;
+      }
+    } else if (isBankMainDragSource(dragged)) {
+      if (bankHoldAnchorMouse != null && bankHoldAnchorSourceId == sourceId) {
+        return bankHoldAnchorMouse;
+      }
+    }
+    return null;
   }
 
   private static void clearDragGrabOffset() {
@@ -746,7 +849,8 @@ public final class TokenDragIconRenderer {
     }
     int dx = mouse.getX() - inventoryHoldAnchorMouse.getX();
     int dy = mouse.getY() - inventoryHoldAnchorMouse.getY();
-    return (dx * dx + dy * dy) > DRAG_MOVE_THRESHOLD_SQ;
+    boolean started = (dx * dx + dy * dy) > DRAG_MOVE_THRESHOLD_SQ;
+    return started;
   }
 
   private static boolean hasVisualBankDragStarted(Client client, Widget dragged) {
@@ -765,7 +869,8 @@ public final class TokenDragIconRenderer {
     }
     int dx = mouse.getX() - bankHoldAnchorMouse.getX();
     int dy = mouse.getY() - bankHoldAnchorMouse.getY();
-    return (dx * dx + dy * dy) > DRAG_MOVE_THRESHOLD_SQ;
+    boolean started = (dx * dx + dy * dy) > DRAG_MOVE_THRESHOLD_SQ;
+    return started;
   }
 
   private static boolean isBankMainDragSource(Widget dragged) {

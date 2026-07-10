@@ -90,7 +90,7 @@ public class GroupSlotLockedPlugin extends Plugin {
           slotStateService.refreshAll();
           violationNotifier.onStateChanged(slotStateService.getState());
         });
-    log.debug("Group Slot Locked started");
+    log.info("Group Slot Locked started");
   }
 
   @Override
