@@ -133,12 +133,12 @@ public class SlotMenuHandler {
     if (!config.enablePlugin() || client.isMenuOpen()) {
       return;
     }
-    MenuEntry[] entries = client.getMenuEntries();
+    MenuEntry[] entries = client.getMenu().getMenuEntries();
     if (entries.length == 0) {
       return;
     }
     if (applyTopHoverLabel(entries[entries.length - 1])) {
-      client.setMenuEntries(entries);
+      client.getMenu().setMenuEntries(entries);
     }
   }
 
@@ -147,9 +147,9 @@ public class SlotMenuHandler {
     if (!config.enablePlugin() || client.isMenuOpen()) {
       return;
     }
-    MenuEntry[] entries = client.getMenuEntries();
+    MenuEntry[] entries = client.getMenu().getMenuEntries();
     if (applyTokenMenuChanges(entries)) {
-      client.setMenuEntries(entries);
+      client.getMenu().setMenuEntries(entries);
     }
   }
 
@@ -196,12 +196,12 @@ public class SlotMenuHandler {
     if (!config.enablePlugin() || client.isMenuOpen()) {
       return;
     }
-    MenuEntry[] entries = client.getMenuEntries();
+    MenuEntry[] entries = client.getMenu().getMenuEntries();
     if (entries.length == 0) {
       return;
     }
     if (applyTopHoverLabel(entries[entries.length - 1])) {
-      client.setMenuEntries(entries);
+      client.getMenu().setMenuEntries(entries);
     }
   }
 
