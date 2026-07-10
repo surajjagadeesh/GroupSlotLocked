@@ -38,8 +38,6 @@ public class TokenItemDragOverlay extends Overlay {
       return null;
     }
     TokenDragIconRenderer.renderDraggedWidgetIcon(graphics, client, itemManager, displayService);
-    TokenDragIconRenderer.renderPressedInventoryItemIcon(graphics, client, itemManager, displayService);
-    TokenDragIconRenderer.renderPressedBankItemIcon(graphics, client, itemManager, displayService);
     return null;
   }
 }

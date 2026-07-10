@@ -8,8 +8,11 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import javax.annotation.Nullable;
 import net.runelite.api.Client;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.Point;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetItem;
 import net.runelite.client.game.ItemManager;
@@ -82,6 +85,282 @@ public final class TokenDragIconRenderer {
     }
 
     renderStaticWidgetItemIcon(graphics, itemManager, displayService, itemId, widgetItem);
+  }
+
+  public static void renderInventoryInterfaceItemIcon(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      int itemId,
+      WidgetItem widgetItem) {
+    if (isBankMainSourceWidget(widgetItem.getWidget())) {
+      return;
+    }
+    if (tryRenderStationaryHoldWidgetCover(
+        graphics, client, itemManager, displayService, widgetItem, false)) {
+      return;
+    }
+    if (slotFromItemId(itemManager, itemId) == null) {
+      return;
+    }
+    renderInventoryDragWidgetItemIcon(
+        graphics, client, itemManager, displayService, itemId, widgetItem);
+  }
+
+  public static void renderBankInterfaceItemIcon(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      int itemId,
+      WidgetItem widgetItem) {
+    if (!isBankMainSourceWidget(widgetItem.getWidget())) {
+      return;
+    }
+    if (tryRenderStationaryHoldWidgetCover(
+        graphics, client, itemManager, displayService, widgetItem, true)) {
+      return;
+    }
+    if (slotFromItemId(itemManager, itemId) == null) {
+      return;
+    }
+    renderBankDragWidgetItemIcon(
+        graphics, client, itemManager, displayService, itemId, widgetItem);
+  }
+
+  public static void renderStationaryHoldCover(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService) {
+    if (client.getMouseCurrentButton() == 0) {
+      clearInventoryHoldAnchor();
+      clearBankHoldAnchor();
+      return;
+    }
+
+    Widget dragged = client.getDraggedWidget();
+    if (dragged != null) {
+      if (isInventoryDragContainer(dragged) && isStationaryHoldDrag(client, dragged, false)) {
+        drawStationaryHoldForDrag(graphics, client, itemManager, displayService, dragged);
+      } else if (isBankMainDragSource(dragged) && isStationaryHoldDrag(client, dragged, true)) {
+        drawStationaryHoldForDrag(graphics, client, itemManager, displayService, dragged);
+      }
+      return;
+    }
+
+    Point mouse = client.getMouseCanvasPosition();
+    if (mouse == null) {
+      return;
+    }
+
+    for (int containerId : INVENTORY_ITEM_CONTAINERS) {
+      if (drawStationaryHoldAtContainer(
+          graphics,
+          client,
+          itemManager,
+          displayService,
+          containerId,
+          mouse.getX(),
+          mouse.getY())) {
+        return;
+      }
+    }
+
+    for (int containerId : BANK_ITEM_CONTAINERS) {
+      if (drawStationaryHoldAtContainer(
+          graphics,
+          client,
+          itemManager,
+          displayService,
+          containerId,
+          mouse.getX(),
+          mouse.getY())) {
+        return;
+      }
+    }
+  }
+
+  private static boolean tryRenderStationaryHoldWidgetCover(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      WidgetItem widgetItem,
+      boolean bankMain) {
+    if (!isStationaryHoldWidgetItem(client, widgetItem, bankMain)) {
+      return false;
+    }
+    HeldItemDetails held = resolveHeldItemDetails(client, client.getDraggedWidget());
+    if (held == null) {
+      int itemId = widgetItem.getId();
+      if (slotFromItemId(itemManager, itemId) == null) {
+        return false;
+      }
+      held = new HeldItemDetails(itemId, widgetItem.getQuantity());
+    }
+    if (slotFromItemId(itemManager, held.itemId) == null) {
+      return false;
+    }
+    drawStationaryHoldAtWidget(
+        graphics, client, itemManager, displayService, held, widgetItem.getWidget());
+    return true;
+  }
+
+  private static boolean isStationaryHoldDrag(Client client, Widget dragged, boolean bankMain) {
+    if (bankMain) {
+      return !hasVisualBankDragStarted(client, dragged);
+    }
+    return !hasVisualInventoryDragStarted(client, dragged);
+  }
+
+  private static boolean isStationaryHoldWidgetItem(
+      Client client, WidgetItem widgetItem, boolean bankMain) {
+    if (client.getMouseCurrentButton() == 0) {
+      return false;
+    }
+    Widget itemWidget = widgetItem.getWidget();
+    if (bankMain) {
+      if (!isBankMainSourceWidget(itemWidget)) {
+        return false;
+      }
+    } else if (isBankMainSourceWidget(itemWidget)) {
+      return false;
+    }
+
+    Widget dragged = client.getDraggedWidget();
+    if (dragged == null || !isStationaryHoldDrag(client, dragged, bankMain)) {
+      return false;
+    }
+    if (bankMain && !isBankMainDragSource(dragged)) {
+      return false;
+    }
+    if (!bankMain && !isInventoryDragContainer(dragged)) {
+      return false;
+    }
+    Widget heldSlot = resolveDraggedSlotWidget(client);
+    return heldSlot != null && heldSlot == itemWidget;
+  }
+
+  private static void drawStationaryHoldForDrag(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      Widget dragged) {
+    HeldItemDetails held = resolveHeldItemDetails(client, dragged);
+    if (held == null || slotFromItemId(itemManager, held.itemId) == null) {
+      return;
+    }
+    Widget heldSlot = resolveDraggedSlotWidget(client);
+    drawStationaryHoldAtWidget(
+        graphics, client, itemManager, displayService, held, heldSlot != null ? heldSlot : dragged);
+  }
+
+  private static void drawStationaryHoldAtWidget(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      HeldItemDetails held,
+      @Nullable Widget slotWidget) {
+    SlotType slot = slotFromItemId(itemManager, held.itemId);
+    if (slot == null) {
+      return;
+    }
+    Rectangle bounds = resolveActiveDragBounds(client, slotWidget);
+    if (bounds == null && slotWidget != null) {
+      bounds = getWidgetCanvasBounds(client, slotWidget);
+    }
+    if (bounds != null) {
+      drawTokenIcon(
+          graphics,
+          itemManager,
+          displayService,
+          slot,
+          bounds,
+          held.itemId,
+          held.quantity,
+          true);
+    }
+  }
+
+  private static boolean drawStationaryHoldAtContainer(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      int containerId,
+      int mouseX,
+      int mouseY) {
+    Widget container = client.getWidget(containerId);
+    Widget hit = findItemChildAtCanvas(client, container, mouseX, mouseY);
+    if (hit == null) {
+      return false;
+    }
+    HeldItemDetails held = resolveHeldItemDetails(client, null, hit);
+    if (held == null || slotFromItemId(itemManager, held.itemId) == null) {
+      return false;
+    }
+    drawStationaryHoldAtWidget(graphics, client, itemManager, displayService, held, hit);
+    return true;
+  }
+
+  @Nullable
+  private static HeldItemDetails resolveHeldItemDetails(Client client, Widget dragged) {
+    return resolveHeldItemDetails(client, dragged, resolveDraggedSlotWidget(client));
+  }
+
+  @Nullable
+  private static HeldItemDetails resolveHeldItemDetails(
+      Client client, @Nullable Widget dragged, @Nullable Widget heldSlot) {
+    int itemId = heldSlot != null ? heldSlot.getItemId() : -1;
+    int quantity = heldSlot != null ? heldSlot.getItemQuantity() : 0;
+    if (itemId <= 0 && dragged != null) {
+      ItemContainer container = containerForDragWidget(client, dragged.getId());
+      if (container != null) {
+        Item item = container.getItem(dragged.getIndex());
+        if (item != null) {
+          itemId = item.getId();
+          quantity = item.getQuantity();
+        }
+      }
+    }
+    if (itemId <= 0 && heldSlot != null) {
+      itemId = heldSlot.getItemId();
+      quantity = heldSlot.getItemQuantity();
+    }
+    if (itemId <= 0) {
+      return null;
+    }
+    return new HeldItemDetails(itemId, quantity);
+  }
+
+  @Nullable
+  private static ItemContainer containerForDragWidget(Client client, int widgetId) {
+    if (widgetId == InterfaceID.Inventory.ITEMS || widgetId == InterfaceID.Bankside.ITEMS) {
+      return client.getItemContainer(InventoryID.INV);
+    }
+    if (widgetId == InterfaceID.Bankmain.ITEMS
+        || widgetId == InterfaceID.Bankmain.BANKTAGS_DISPLAY_ITEMS) {
+      return client.getItemContainer(InventoryID.BANK);
+    }
+    if (widgetId == InterfaceID.SharedBank.ITEMS
+        || widgetId == InterfaceID.SharedBankSide.ITEMS) {
+      return client.getItemContainer(InventoryID.INV_GROUP_TEMP);
+    }
+    return null;
+  }
+
+  private static final class HeldItemDetails {
+    private final int itemId;
+    private final int quantity;
+
+    private HeldItemDetails(int itemId, int quantity) {
+      this.itemId = itemId;
+      this.quantity = quantity;
+    }
   }
 
   public static void renderInventoryDragWidgetItemIcon(
@@ -167,6 +446,37 @@ public final class TokenDragIconRenderer {
   }
 
   @Nullable
+  private static Widget findItemChildAtCanvas(
+      Client client, Widget container, int canvasX, int canvasY) {
+    if (container == null) {
+      return null;
+    }
+    Widget hit = findInChildrenAtCanvas(client, container.getDynamicChildren(), canvasX, canvasY);
+    if (hit != null) {
+      return hit;
+    }
+    return findInChildrenAtCanvas(client, container.getChildren(), canvasX, canvasY);
+  }
+
+  @Nullable
+  private static Widget findInChildrenAtCanvas(
+      Client client, Widget[] children, int canvasX, int canvasY) {
+    if (children == null) {
+      return null;
+    }
+    for (Widget child : children) {
+      if (child == null || child.isHidden() || child.getItemId() <= 0) {
+        continue;
+      }
+      Rectangle bounds = getWidgetCanvasBounds(client, child);
+      if (bounds != null && bounds.contains(canvasX, canvasY)) {
+        return child;
+      }
+    }
+    return null;
+  }
+
+  @Nullable
   private static Widget resolveDraggedSlotWidget(Client client) {
     Widget dragged = client.getDraggedWidget();
     if (dragged == null) {
@@ -218,66 +528,7 @@ public final class TokenDragIconRenderer {
       Client client,
       ItemManager itemManager,
       SlotDisplayService displayService) {
-    if (client.getMouseCurrentButton() == 0) {
-      clearInventoryHoldAnchor();
-      return;
-    }
-
-    Widget dragged = client.getDraggedWidget();
-    if (dragged != null && isInventoryDragContainer(dragged)) {
-      if (hasVisualInventoryDragStarted(client, dragged)) {
-        return;
-      }
-      Widget draggedSlot = resolveDraggedSlotWidget(client);
-      if (draggedSlot != null && draggedSlot.getItemId() > 0) {
-        SlotType slot = slotFromItemId(itemManager, draggedSlot.getItemId());
-        if (slot != null) {
-          Rectangle bounds = getWidgetCanvasBounds(client, draggedSlot);
-          if (bounds != null) {
-            drawTokenIcon(
-                graphics,
-                itemManager,
-                displayService,
-                slot,
-                bounds,
-                draggedSlot.getItemId(),
-                draggedSlot.getItemQuantity(),
-                false);
-          }
-        }
-      }
-      return;
-    }
-
-    Point mouse = client.getMouseCanvasPosition();
-    if (mouse == null) {
-      return;
-    }
-
-    for (int containerId : INVENTORY_ITEM_CONTAINERS) {
-      Widget container = client.getWidget(containerId);
-      Widget hit = findItemChildAt(container, mouse.getX(), mouse.getY());
-      if (hit == null) {
-        continue;
-      }
-      SlotType slot = slotFromItemId(itemManager, hit.getItemId());
-      if (slot == null) {
-        continue;
-      }
-      Rectangle bounds = getWidgetCanvasBounds(client, hit);
-      if (bounds != null) {
-        drawTokenIcon(
-            graphics,
-            itemManager,
-            displayService,
-            slot,
-            bounds,
-            hit.getItemId(),
-            hit.getItemQuantity(),
-            false);
-      }
-      return;
-    }
+    renderStationaryHoldCover(graphics, client, itemManager, displayService);
   }
 
   public static void renderPressedBankItemIcon(
@@ -285,66 +536,7 @@ public final class TokenDragIconRenderer {
       Client client,
       ItemManager itemManager,
       SlotDisplayService displayService) {
-    if (client.getMouseCurrentButton() == 0) {
-      clearBankHoldAnchor();
-      return;
-    }
-
-    Widget dragged = client.getDraggedWidget();
-    if (dragged != null && isBankMainDragSource(dragged)) {
-      if (hasVisualBankDragStarted(client, dragged)) {
-        return;
-      }
-      Widget draggedSlot = resolveDraggedSlotWidget(client);
-      if (draggedSlot != null && draggedSlot.getItemId() > 0) {
-        SlotType slot = slotFromItemId(itemManager, draggedSlot.getItemId());
-        if (slot != null) {
-          Rectangle bounds = getWidgetCanvasBounds(client, draggedSlot);
-          if (bounds != null) {
-            drawTokenIcon(
-                graphics,
-                itemManager,
-                displayService,
-                slot,
-                bounds,
-                draggedSlot.getItemId(),
-                draggedSlot.getItemQuantity(),
-                false);
-          }
-        }
-      }
-      return;
-    }
-
-    Point mouse = client.getMouseCanvasPosition();
-    if (mouse == null) {
-      return;
-    }
-
-    for (int containerId : BANK_ITEM_CONTAINERS) {
-      Widget container = client.getWidget(containerId);
-      Widget hit = findItemChildAt(container, mouse.getX(), mouse.getY());
-      if (hit == null) {
-        continue;
-      }
-      SlotType slot = slotFromItemId(itemManager, hit.getItemId());
-      if (slot == null) {
-        continue;
-      }
-      Rectangle bounds = getWidgetCanvasBounds(client, hit);
-      if (bounds != null) {
-        drawTokenIcon(
-            graphics,
-            itemManager,
-            displayService,
-            slot,
-            bounds,
-            hit.getItemId(),
-            hit.getItemQuantity(),
-            false);
-      }
-      return;
-    }
+    renderStationaryHoldCover(graphics, client, itemManager, displayService);
   }
 
   public static void drawTokenIcon(
@@ -448,35 +640,6 @@ public final class TokenDragIconRenderer {
       current = current.getParent();
     }
     return false;
-  }
-
-  @Nullable
-  private static Widget findItemChildAt(Widget container, int x, int y) {
-    if (container == null) {
-      return null;
-    }
-    Widget hit = findInChildren(container.getDynamicChildren(), x, y);
-    if (hit != null) {
-      return hit;
-    }
-    return findInChildren(container.getChildren(), x, y);
-  }
-
-  @Nullable
-  private static Widget findInChildren(Widget[] children, int x, int y) {
-    if (children == null) {
-      return null;
-    }
-    for (Widget child : children) {
-      if (child == null || child.isHidden() || child.getItemId() <= 0) {
-        continue;
-      }
-      Rectangle bounds = child.getBounds();
-      if (bounds != null && bounds.contains(x, y)) {
-        return child;
-      }
-    }
-    return null;
   }
 
   private static boolean isInventoryDragContainer(Widget dragged) {

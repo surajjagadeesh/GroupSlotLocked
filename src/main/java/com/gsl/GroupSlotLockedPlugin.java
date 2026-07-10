@@ -5,6 +5,7 @@ import com.gsl.menu.SlotMenuHandler;
 import com.gsl.overlay.ItemRestrictionOverlay;
 import com.gsl.overlay.TokenBankDragOverlay;
 import com.gsl.overlay.TokenInventoryDragOverlay;
+import com.gsl.overlay.TokenPressHoldOverlay;
 import com.gsl.overlay.TokenItemDragOverlay;
 import com.gsl.overlay.ViolationOverlay;
 import com.gsl.service.SlotStateService;
@@ -46,6 +47,7 @@ public class GroupSlotLockedPlugin extends Plugin {
   @Inject private ItemRestrictionOverlay itemRestrictionOverlay;
   @Inject private TokenInventoryDragOverlay tokenInventoryDragOverlay;
   @Inject private TokenBankDragOverlay tokenBankDragOverlay;
+  @Inject private TokenPressHoldOverlay tokenPressHoldOverlay;
   @Inject private TokenItemDragOverlay tokenItemDragOverlay;
   @Inject private ViolationOverlay violationOverlay;
   @Inject private GroupSlotLockedPanel panel;
@@ -78,6 +80,7 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.add(itemRestrictionOverlay);
     overlayManager.add(tokenInventoryDragOverlay);
     overlayManager.add(tokenBankDragOverlay);
+    overlayManager.add(tokenPressHoldOverlay);
     overlayManager.add(tokenItemDragOverlay);
     overlayManager.add(violationOverlay);
     eventBus.register(slotMenuHandler);
@@ -96,6 +99,7 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.remove(itemRestrictionOverlay);
     overlayManager.remove(tokenInventoryDragOverlay);
     overlayManager.remove(tokenBankDragOverlay);
+    overlayManager.remove(tokenPressHoldOverlay);
     overlayManager.remove(tokenItemDragOverlay);
     overlayManager.remove(violationOverlay);
     eventBus.unregister(slotMenuHandler);

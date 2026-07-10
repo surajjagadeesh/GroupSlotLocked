@@ -2,7 +2,6 @@ package com.gsl.overlay;
 
 import com.gsl.GroupSlotLockedConfig;
 import com.gsl.service.SlotDisplayService;
-import com.gsl.util.BankItemUtils;
 import com.gsl.util.TokenDragIconRenderer;
 import java.awt.Graphics2D;
 import javax.inject.Inject;
@@ -41,10 +40,7 @@ public class TokenBankDragOverlay extends WidgetItemOverlay {
     if (!config.enablePlugin() || !config.replaceTokenIcons()) {
       return;
     }
-    if (BankItemUtils.resolveSlotType(itemManager, itemId) == null) {
-      return;
-    }
-    TokenDragIconRenderer.renderBankDragWidgetItemIcon(
+    TokenDragIconRenderer.renderBankInterfaceItemIcon(
         graphics, client, itemManager, displayService, itemId, widgetItem);
   }
 }
