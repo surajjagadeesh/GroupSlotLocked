@@ -27,6 +27,8 @@ import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.events.ConfigSync;
+import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -163,11 +165,41 @@ public class GroupSlotLockedPlugin extends Plugin {
   }
 
   @Subscribe
-  public void onGameStateChanged(GameStateChanged event) {
-    if (event.getGameState() == GameState.LOGGED_IN) {
+  public void onConfigSync(ConfigSync event) {
+    if (client.getGameState() != GameState.LOGGED_IN) {
+      return;
+    }
+    slotStateService.reloadSnapshots();
+    if (config.enablePlugin()) {
       slotStateService.refreshAll();
-      violationNotifier.reset();
       violationNotifier.onStateChanged(slotStateService.getState());
+    }
+  }
+
+  @Subscribe
+  public void onRuneScapeProfileChanged(RuneScapeProfileChanged event) {
+    slotStateService.reloadSnapshots();
+    if (config.enablePlugin()) {
+      slotStateService.refreshAll();
+      violationNotifier.onStateChanged(slotStateService.getState());
+    }
+  }
+
+  @Subscribe
+  public void onGameStateChanged(GameStateChanged event) {
+    if (event.getGameState() == GameState.LOGIN_SCREEN
+        || event.getGameState() == GameState.CONNECTION_LOST) {
+      slotStateService.onLogout();
+      return;
+    }
+    if (event.getGameState() == GameState.LOGGED_IN) {
+      clientThread.invokeLater(
+          () -> {
+            slotStateService.onLogin();
+            slotStateService.refreshAll();
+            violationNotifier.reset();
+            violationNotifier.onStateChanged(slotStateService.getState());
+          });
     }
   }
 
