@@ -178,12 +178,8 @@ public class GroupSlotLockedPanel extends PluginPanel {
         iconLabel.setIcon(null);
         iconLabel.setText(displayService.getPanelAbbrev(slot));
       }
-      if (config.showSlotNameLabels()) {
-        nameLabel.setText(displayService.getPanelAbbrev(slot));
-        nameLabel.setVisible(true);
-      } else {
-        nameLabel.setVisible(false);
-      }
+      nameLabel.setText(displayService.getPanelAbbrev(slot));
+      nameLabel.setVisible(true);
       CellState cellState = resolveCellState(slot, state, tooMany);
       setBorder(BorderFactory.createLineBorder(cellState.borderColor, 2));
       setToolTipText(displayService.getDisplayName(slot) + " — " + cellState.label);

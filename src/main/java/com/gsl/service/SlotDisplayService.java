@@ -2,7 +2,6 @@ package com.gsl.service;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.gsl.GroupSlotLockedConfig;
 import com.gsl.model.SlotType;
 import com.gsl.model.TokenIconRenderContext;
 import com.gsl.model.TokenIconStyle;
@@ -20,7 +19,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -32,15 +30,12 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
-import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.api.Point;
 import net.runelite.client.ui.overlay.OverlayUtil;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.QuantityFormatter;
-import net.runelite.client.util.Text;
 
 @Slf4j
 @Singleton
@@ -49,17 +44,13 @@ public class SlotDisplayService {
   private static final Path DATA_DIR = RuneLite.RUNELITE_DIR.toPath().resolve("group-slot-locked");
   private static final Path ICON_DIR = DATA_DIR.resolve("icons");
   private static final Path NAMES_FILE = DATA_DIR.resolve("slot-names.json");
-  private final GroupSlotLockedConfig config;
-  private final ItemManager itemManager;
   private final Gson gson;
   private final Map<SlotType, String> displayNames = new EnumMap<>(SlotType.class);
   private final Map<SlotType, BufferedImage> iconCache = new EnumMap<>(SlotType.class);
   private final Map<SlotType, BufferedImage> generatedDefaults = new EnumMap<>(SlotType.class);
 
   @Inject
-  SlotDisplayService(GroupSlotLockedConfig config, ItemManager itemManager, Gson gson) {
-    this.config = config;
-    this.itemManager = itemManager;
+  SlotDisplayService(Gson gson) {
     this.gson = gson;
     reloadNames();
   }
@@ -80,11 +71,45 @@ public class SlotDisplayService {
         log.debug("Failed to load slot names from {}", NAMES_FILE, ex);
       }
     }
-    parseInlineOverrides(config.customSlotNames());
   }
 
   public void reloadIcons() {
     iconCache.clear();
+  }
+
+  /**
+   * Copies bundled slot icons into {@code .runelite/group-slot-locked/icons/} when a slot has no
+   * user override yet. Matches what right-click → Import icon does, without manual steps.
+   */
+  public void ensureDefaultIcons() {
+    try {
+      Files.createDirectories(ICON_DIR);
+      boolean seeded = false;
+      for (SlotType slot : SlotType.values()) {
+        Path target = ICON_DIR.resolve(slot.fileName());
+        if (Files.isRegularFile(target)) {
+          continue;
+        }
+        BufferedImage bundled = loadBundledIcon(slot);
+        if (bundled == null) {
+          log.debug("No bundled icon available to seed for {}", slot);
+          continue;
+        }
+        ImageIO.write(bundled, "png", target.toFile());
+        seeded = true;
+      }
+      if (seeded) {
+        reloadIcons();
+      }
+    } catch (IOException ex) {
+      log.debug("Failed to seed default slot icons under {}", ICON_DIR, ex);
+    }
+  }
+
+  public void warmIconCache() {
+    for (SlotType slot : SlotType.values()) {
+      getReplacementIcon(slot);
+    }
   }
 
   public String getDisplayName(SlotType slot) {
@@ -181,17 +206,11 @@ public class SlotDisplayService {
   }
 
   public BufferedImage getIcon(SlotType slot) {
-    if (!config.useCustomSlotIcons()) {
-      return getBundledOrItemIcon(slot);
-    }
     return iconCache.computeIfAbsent(slot, this::resolveIcon);
   }
 
   @Nullable
   public BufferedImage getReplacementIcon(SlotType slot) {
-    if (!config.useCustomSlotIcons()) {
-      return getBundledOrGeneratedIcon(slot);
-    }
     BufferedImage icon = iconCache.get(slot);
     if (icon != null) {
       return icon;
@@ -323,8 +342,7 @@ public class SlotDisplayService {
 
   @Nullable
   private BufferedImage getBundledOrGeneratedIcon(SlotType slot) {
-    BufferedImage bundled =
-        ImageUtil.loadImageResource(SlotDisplayService.class, "/icons/slots/" + slot.fileName());
+    BufferedImage bundled = loadBundledIcon(slot);
     if (bundled != null) {
       return bundled;
     }
@@ -332,12 +350,9 @@ public class SlotDisplayService {
   }
 
   @Nullable
-  private BufferedImage getBundledOrItemIcon(SlotType slot) {
-    BufferedImage icon = getBundledOrGeneratedIcon(slot);
-    if (icon != null) {
-      return icon;
-    }
-    return itemManager.getImage(slot.getTokenItemId());
+  private static BufferedImage loadBundledIcon(SlotType slot) {
+    return ImageUtil.loadImageResource(
+        SlotDisplayService.class, "/icons/slots/" + slot.fileName());
   }
 
   private BufferedImage generateDefaultIcon(SlotType slot) {
@@ -369,21 +384,6 @@ public class SlotDisplayService {
     g.drawImage(image, 0, 0, newWidth, newHeight, null);
     g.dispose();
     return scaled;
-  }
-
-  private void parseInlineOverrides(String csv) {
-    if (csv == null || csv.trim().isEmpty()) {
-      return;
-    }
-    Map<String, String> overrides = new HashMap<>();
-    for (String entry : Text.fromCSV(csv)) {
-      int eq = entry.indexOf('=');
-      if (eq <= 0 || eq >= entry.length() - 1) {
-        continue;
-      }
-      overrides.put(entry.substring(0, eq).trim().toLowerCase(), entry.substring(eq + 1).trim());
-    }
-    applyNameOverrides(overrides);
   }
 
   private void applyNameOverrides(Map<String, String> overrides) {

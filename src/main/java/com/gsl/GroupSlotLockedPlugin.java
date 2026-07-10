@@ -10,6 +10,7 @@ import com.gsl.overlay.TokenPressHoldOverlay;
 import com.gsl.overlay.TokenItemDragOverlay;
 import com.gsl.overlay.TokenTooltipOverlay;
 import com.gsl.overlay.ViolationOverlay;
+import com.gsl.service.SlotDisplayService;
 import com.gsl.service.SlotStateService;
 import com.gsl.service.ViolationNotifier;
 import com.gsl.ui.GroupSlotLockedPanel;
@@ -44,6 +45,7 @@ import net.runelite.client.util.ImageUtil;
 public class GroupSlotLockedPlugin extends Plugin {
   @Inject private Client client;
   @Inject private SlotStateService slotStateService;
+  @Inject private SlotDisplayService displayService;
   @Inject private ViolationNotifier violationNotifier;
   @Inject private SlotMenuHandler slotMenuHandler;
   @Inject private TokenBankSearchHandler tokenBankSearchHandler;
@@ -64,6 +66,8 @@ public class GroupSlotLockedPlugin extends Plugin {
 
   @Override
   protected void startUp() {
+    displayService.ensureDefaultIcons();
+    displayService.warmIconCache();
     BufferedImage icon;
     try {
       icon = ImageUtil.loadImageResource(getClass(), "/panel_icon.png");

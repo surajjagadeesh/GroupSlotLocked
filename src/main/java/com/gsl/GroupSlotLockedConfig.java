@@ -56,30 +56,6 @@ public interface GroupSlotLockedConfig extends Config {
   }
 
   @ConfigItem(
-      keyName = "deprioritizeTokenWear",
-      name = "Deprioritize token wear",
-      description = "Move Wear/Wield below Examine on Team cape token items")
-  default boolean deprioritizeTokenWear() {
-    return true;
-  }
-
-  @ConfigItem(
-      keyName = "tokenLeftClick",
-      name = "Token left-click",
-      description = "Default left-click action for slot token items in inventory")
-  default TokenLeftClick tokenLeftClick() {
-    return TokenLeftClick.EXAMINE;
-  }
-
-  @ConfigItem(
-      keyName = "tokenExamineHint",
-      name = "Token examine hint",
-      description = "Show a chat message naming the slot when examining a token item")
-  default boolean tokenExamineHint() {
-    return true;
-  }
-
-  @ConfigItem(
       keyName = "deprioritizeIllegalEquips",
       name = "Deprioritize illegal equips",
       description = "Move Wear/Wield below other options on gear that fails validation")
@@ -93,14 +69,6 @@ public interface GroupSlotLockedConfig extends Config {
       description = "Consume Wear/Wield clicks on token items and illegal gear (backup)")
   default boolean blockIllegalEquips() {
     return false;
-  }
-
-  @ConfigItem(
-      keyName = "useCustomSlotIcons",
-      name = "Use custom slot icons",
-      description = "Load custom slot icons from .runelite/group-slot-locked/icons/")
-  default boolean useCustomSlotIcons() {
-    return true;
   }
 
   @ConfigItem(
@@ -120,41 +88,11 @@ public interface GroupSlotLockedConfig extends Config {
   }
 
   @ConfigItem(
-      keyName = "customSlotNames",
-      name = "Custom slot names",
-      description = "Inline slot name overrides, e.g. head=Tank helm,main_hand=DPS weapon")
-  default String customSlotNames() {
-    return "";
-  }
-
-  @ConfigItem(
-      keyName = "showSlotNameLabels",
-      name = "Show slot name labels",
-      description = "Show display names under slot icons in the sidebar panel")
-  default boolean showSlotNameLabels() {
-    return true;
-  }
-
-  @ConfigItem(
       keyName = "chatWarnings",
       name = "Chat warnings",
       description =
           "Show chat messages when entering an illegal loadout or exceeding the token cap")
   default boolean chatWarnings() {
     return true;
-  }
-
-  @ConfigItem(
-      keyName = "customTokens",
-      name = "Custom tokens",
-      description = "Future: override token item IDs per slot")
-  default String customTokens() {
-    return "";
-  }
-
-  enum TokenLeftClick {
-    EXAMINE,
-    DROP,
-    USE
   }
 }

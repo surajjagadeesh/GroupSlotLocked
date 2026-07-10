@@ -1,7 +1,6 @@
 package com.gsl.menu;
 
 import com.gsl.GroupSlotLockedConfig;
-import com.gsl.GroupSlotLockedConfig.TokenLeftClick;
 import com.gsl.model.SlotType;
 import com.gsl.model.Violation;
 import com.gsl.service.SlotDisplayService;
@@ -167,13 +166,11 @@ public class SlotMenuHandler {
     if (slot != null && isExamineEntry(entry)) {
       pendingSuppressTokenExamineItemId = itemId;
       pendingSuppressTokenExamineUntilTick = client.getTickCount() + 5;
-      if (config.tokenExamineHint()) {
-        chatMessageManager.queue(
-            QueuedMessage.builder()
-                .type(ChatMessageType.GAMEMESSAGE)
-                .runeLiteFormattedMessage(displayService.getTokenExamineChatMessage(slot))
-                .build());
-      }
+      chatMessageManager.queue(
+          QueuedMessage.builder()
+              .type(ChatMessageType.GAMEMESSAGE)
+              .runeLiteFormattedMessage(displayService.getTokenExamineChatMessage(slot))
+              .build());
       return;
     }
     if (!config.blockIllegalEquips() || !isEquipOption(event.getMenuOption())) {
@@ -274,10 +271,8 @@ public class SlotMenuHandler {
       entry.setDeprioritized(true);
       changed = true;
     }
-    if (isPreferredTokenOption(entry, config.tokenLeftClick())) {
-      if (config.tokenLeftClick() == TokenLeftClick.EXAMINE && isExamineEntry(entry)) {
-        applyTokenSlotMenuText(entry, slot);
-      }
+    if (isExamineEntry(entry)) {
+      applyTokenSlotMenuText(entry, slot);
       promoteEntry(entries, index);
       changed = true;
     }
@@ -305,7 +300,7 @@ public class SlotMenuHandler {
         entry.setDeprioritized(true);
         changed = true;
       }
-      if (isPreferredTokenOption(entry, config.tokenLeftClick())) {
+      if (isExamineEntry(entry)) {
         preferredIndex = i;
       }
     }
@@ -314,9 +309,7 @@ public class SlotMenuHandler {
       if (preferredIndex < entries.length - 1) {
         promoteEntry(entries, preferredIndex);
       }
-      if (config.tokenLeftClick() == TokenLeftClick.EXAMINE) {
-        prepareExamineForLeftClick(entries[entries.length - 1]);
-      }
+      prepareExamineForLeftClick(entries[entries.length - 1]);
       changed = true;
     }
 
@@ -375,22 +368,13 @@ public class SlotMenuHandler {
     entry.setForceLeftClick(true);
   }
 
-  private boolean shouldDeprioritizeTokenOption(String option) {
+  private static boolean shouldDeprioritizeTokenOption(String option) {
     if (option == null) {
       return false;
     }
-    switch (config.tokenLeftClick()) {
-      case EXAMINE:
-        return isEquipOption(option)
-            || option.equalsIgnoreCase("use")
-            || option.equalsIgnoreCase("drop");
-      case USE:
-        return isEquipOption(option) || isExamineOption(option) || option.equalsIgnoreCase("drop");
-      case DROP:
-        return isEquipOption(option) || isExamineOption(option) || option.equalsIgnoreCase("use");
-      default:
-        return config.deprioritizeTokenWear() && isEquipOption(option);
-    }
+    return isEquipOption(option)
+        || option.equalsIgnoreCase("use")
+        || option.equalsIgnoreCase("drop");
   }
 
   private void applyTokenSlotMenuText(MenuEntry entry, SlotType slot) {
@@ -569,23 +553,6 @@ public class SlotMenuHandler {
     }
 
     return widget.getItemId();
-  }
-
-  private static boolean isPreferredTokenOption(MenuEntry entry, TokenLeftClick preferred) {
-    if (entry == null) {
-      return false;
-    }
-    String option = entry.getOption();
-    switch (preferred) {
-      case EXAMINE:
-        return isExamineEntry(entry);
-      case DROP:
-        return option != null && option.equalsIgnoreCase("drop");
-      case USE:
-        return option != null && option.equalsIgnoreCase("use");
-      default:
-        return false;
-    }
   }
 
   private static boolean isExamineEntry(MenuEntry entry) {
