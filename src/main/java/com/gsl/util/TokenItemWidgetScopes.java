@@ -18,6 +18,37 @@ public final class TokenItemWidgetScopes {
     return isTokenItemWidget(entry.getWidget());
   }
 
+  /**
+   * Bank interfaces where withdraw/deposit left-click should stay vanilla. Hover targets are still
+   * replaced with slot labels.
+   */
+  public static boolean isTokenBankActionContext(MenuEntry entry) {
+    int componentId = resolveComponentId(entry);
+    return componentId == InterfaceID.Bankside.ITEMS
+        || componentId == InterfaceID.Bankmain.ITEMS
+        || componentId == InterfaceID.Bankmain.BANKTAGS_DISPLAY_ITEMS
+        || componentId == InterfaceID.SharedBank.ITEMS
+        || componentId == InterfaceID.SharedBank.MAIN_BANK
+        || componentId == InterfaceID.SharedBankSide.ITEMS;
+  }
+
+  /**
+   * Contexts where token left-click should be overridden (e.g. promote Examine). Bank withdraw/deposit
+   * and similar interface actions are excluded so vanilla left-click behavior is preserved.
+   */
+  public static boolean isTokenLeftClickReorderContext(MenuEntry entry) {
+    int componentId = resolveComponentId(entry);
+    return componentId == InterfaceID.Inventory.ITEMS;
+  }
+
+  private static int resolveComponentId(MenuEntry entry) {
+    if (entry.getParam1() > 0) {
+      return entry.getParam1();
+    }
+    Widget widget = entry.getWidget();
+    return widget != null ? widget.getId() : -1;
+  }
+
   public static boolean isTokenItemWidget(Widget widget) {
     if (widget == null) {
       return false;

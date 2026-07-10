@@ -7,6 +7,7 @@ import com.gsl.overlay.TokenBankDragOverlay;
 import com.gsl.overlay.TokenInventoryDragOverlay;
 import com.gsl.overlay.TokenPressHoldOverlay;
 import com.gsl.overlay.TokenItemDragOverlay;
+import com.gsl.overlay.TokenTooltipOverlay;
 import com.gsl.overlay.ViolationOverlay;
 import com.gsl.service.SlotStateService;
 import com.gsl.service.ViolationNotifier;
@@ -49,6 +50,7 @@ public class GroupSlotLockedPlugin extends Plugin {
   @Inject private TokenBankDragOverlay tokenBankDragOverlay;
   @Inject private TokenPressHoldOverlay tokenPressHoldOverlay;
   @Inject private TokenItemDragOverlay tokenItemDragOverlay;
+  @Inject private TokenTooltipOverlay tokenTooltipOverlay;
   @Inject private ViolationOverlay violationOverlay;
   @Inject private GroupSlotLockedPanel panel;
   @Inject private OverlayManager overlayManager;
@@ -82,6 +84,7 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.add(tokenBankDragOverlay);
     overlayManager.add(tokenPressHoldOverlay);
     overlayManager.add(tokenItemDragOverlay);
+    overlayManager.add(tokenTooltipOverlay);
     overlayManager.add(violationOverlay);
     eventBus.register(slotMenuHandler);
     slotStateService.addListener(violationNotifier::onStateChanged);
@@ -101,6 +104,7 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.remove(tokenBankDragOverlay);
     overlayManager.remove(tokenPressHoldOverlay);
     overlayManager.remove(tokenItemDragOverlay);
+    overlayManager.remove(tokenTooltipOverlay);
     overlayManager.remove(violationOverlay);
     eventBus.unregister(slotMenuHandler);
     slotStateService.removeListener(violationNotifier::onStateChanged);

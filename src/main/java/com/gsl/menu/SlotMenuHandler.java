@@ -7,34 +7,43 @@ import com.gsl.model.Violation;
 import com.gsl.service.SlotDisplayService;
 import com.gsl.service.SlotStateService;
 import com.gsl.service.SlotValidator;
+import com.gsl.util.BankItemUtils;
 import com.gsl.util.TokenItemWidgetScopes;
 import java.util.Locale;
 import java.util.Set;
 import javax.inject.Inject;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.ChatLineBuffer;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
-import net.runelite.api.events.BeforeRender;
+import net.runelite.api.MessageNode;
+import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.PostMenuSort;
+import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.JagexColors;
 import net.runelite.client.util.ColorUtil;
 
 public class SlotMenuHandler {
   private static final Set<String> EQUIP_OPTIONS = Set.of("wear", "wield", "equip");
+  private int pendingSuppressTokenExamineItemId = -1;
+  private int pendingSuppressTokenExamineUntilTick = -1;
   private final Client client;
   private final GroupSlotLockedConfig config;
   private final SlotDisplayService displayService;
   private final SlotStateService slotStateService;
   private final SlotValidator slotValidator;
   private final ChatMessageManager chatMessageManager;
+  private final ItemManager itemManager;
 
   @Inject
   SlotMenuHandler(
@@ -43,13 +52,15 @@ public class SlotMenuHandler {
       SlotDisplayService displayService,
       SlotStateService slotStateService,
       SlotValidator slotValidator,
-      ChatMessageManager chatMessageManager) {
+      ChatMessageManager chatMessageManager,
+      ItemManager itemManager) {
     this.client = client;
     this.config = config;
     this.displayService = displayService;
     this.slotStateService = slotStateService;
     this.slotValidator = slotValidator;
     this.chatMessageManager = chatMessageManager;
+    this.itemManager = itemManager;
   }
 
   @Subscribe
@@ -65,7 +76,7 @@ public class SlotMenuHandler {
     if (itemId <= 0) {
       return;
     }
-    if (SlotType.isTokenItem(itemId)) {
+    if (resolveTokenSlot(itemId) != null) {
       handleTokenEntry(entry, itemId);
       return;
     }
@@ -90,8 +101,9 @@ public class SlotMenuHandler {
       if (itemId <= 0) {
         continue;
       }
-      if (SlotType.isTokenItem(itemId)) {
-        if (handleTokenMenuOpenedEntry(entry, entries, i, SlotType.fromTokenItemId(itemId))) {
+      SlotType slot = resolveTokenSlot(itemId);
+      if (slot != null) {
+        if (handleTokenMenuOpenedEntry(entry, entries, i, slot)) {
           changed = true;
         }
         continue;
@@ -109,32 +121,12 @@ public class SlotMenuHandler {
     }
   }
 
-  @Subscribe(priority = -1)
+  @Subscribe(priority = 1)
   public void onPostMenuSort(PostMenuSort event) {
     if (!config.enablePlugin() || client.isMenuOpen()) {
       return;
     }
-    applyTokenLeftClickOrder(client.getMenuEntries());
-  }
-
-  @Subscribe
-  public void onBeforeRender(BeforeRender event) {
-    if (!config.enablePlugin()) {
-      return;
-    }
-    for (MenuEntry entry : client.getMenuEntries()) {
-      if (!TokenItemWidgetScopes.isTokenItemMenuContext(entry)) {
-        continue;
-      }
-      int itemId = resolveItemId(entry, entry.getItemId());
-      if (!SlotType.isTokenItem(itemId)) {
-        continue;
-      }
-      SlotType slot = SlotType.fromTokenItemId(itemId);
-      if (slot != null) {
-        applyTokenHoverTarget(entry, slot);
-      }
-    }
+    applyTokenMenuChanges(client.getMenuEntries());
   }
 
   @Subscribe
@@ -142,37 +134,96 @@ public class SlotMenuHandler {
     if (!config.enablePlugin()) {
       return;
     }
-    int itemId = event.getMenuEntry().getItemId();
+    MenuEntry entry = event.getMenuEntry();
+    int itemId = resolveItemId(entry, entry.getItemId());
     if (itemId <= 0) {
       return;
     }
-    if (SlotType.isTokenItem(itemId)
-        && isExamineEntry(event.getMenuEntry())
-        && config.tokenExamineHint()) {
-      SlotType slot = SlotType.fromTokenItemId(itemId);
-      chatMessageManager.queue(
-          QueuedMessage.builder()
-              .type(ChatMessageType.GAMEMESSAGE)
-              .runeLiteFormattedMessage(
-                  "Group Slot Locked: this token grants the <col=ff9040>"
-                      + displayService.getDisplayName(slot)
-                      + "</col> equipment slot.")
-              .build());
-    }
-    if (!config.blockIllegalEquips()
-        || !isEquipAction(event.getMenuAction(), event.getMenuOption())) {
+    SlotType slot = resolveTokenSlot(itemId);
+    if (slot != null && isExamineEntry(entry)) {
+      pendingSuppressTokenExamineItemId = itemId;
+      pendingSuppressTokenExamineUntilTick = client.getTickCount() + 5;
+      if (config.tokenExamineHint()) {
+        chatMessageManager.queue(
+            QueuedMessage.builder()
+                .type(ChatMessageType.GAMEMESSAGE)
+                .runeLiteFormattedMessage(displayService.getTokenExamineChatMessage(slot))
+                .build());
+      }
       return;
     }
-    if (SlotType.isTokenItem(itemId)
+    if (!config.blockIllegalEquips() || !isEquipOption(event.getMenuOption())) {
+      return;
+    }
+    if (resolveTokenSlot(itemId) != null
         || slotValidator.getViolationForItem(slotStateService.getState(), itemId)
             != Violation.NONE) {
       event.consume();
     }
   }
 
+  @Subscribe
+  public void onClientTick(ClientTick event) {
+    if (pendingSuppressTokenExamineItemId > 0
+        && client.getTickCount() > pendingSuppressTokenExamineUntilTick) {
+      clearPendingTokenExamineSuppression();
+    }
+  }
+
+  @Subscribe(priority = Short.MAX_VALUE)
+  public void onScriptCallbackEvent(ScriptCallbackEvent event) {
+    if (!config.enablePlugin() || !isSuppressingTokenExamine()) {
+      return;
+    }
+    if (!"chatFilterCheck".equals(event.getEventName())) {
+      return;
+    }
+
+    int[] intStack = client.getIntStack();
+    int intStackSize = client.getIntStackSize();
+    if (intStack[intStackSize - 2] != ChatMessageType.ITEM_EXAMINE.getType()) {
+      return;
+    }
+
+    intStack[intStackSize - 3] = 0;
+  }
+
+  @Subscribe(priority = -2)
+  public void onChatMessage(ChatMessage event) {
+    if (!config.enablePlugin() || !isSuppressingTokenExamine()) {
+      return;
+    }
+    if (event.getType() != ChatMessageType.ITEM_EXAMINE) {
+      return;
+    }
+
+    MessageNode messageNode = event.getMessageNode();
+    ChatLineBuffer chatLineBuffer =
+        client.getChatLineMap().get(ChatMessageType.ITEM_EXAMINE.getType());
+    if (chatLineBuffer != null) {
+      chatLineBuffer.removeMessageNode(messageNode);
+    }
+  }
+
+  private boolean isSuppressingTokenExamine() {
+    return pendingSuppressTokenExamineItemId > 0
+        && client.getTickCount() <= pendingSuppressTokenExamineUntilTick;
+  }
+
+  private void clearPendingTokenExamineSuppression() {
+    pendingSuppressTokenExamineItemId = -1;
+    pendingSuppressTokenExamineUntilTick = -1;
+  }
+
   private void handleTokenEntry(MenuEntry entry, int itemId) {
-    SlotType slot = SlotType.fromTokenItemId(itemId);
+    SlotType slot = resolveTokenSlot(itemId);
+    if (slot == null) {
+      return;
+    }
     applyTokenHoverTarget(entry, slot);
+    if (!TokenItemWidgetScopes.isTokenLeftClickReorderContext(entry)) {
+      return;
+    }
     if (shouldDeprioritizeTokenOption(entry.getOption())) {
       entry.setDeprioritized(true);
     }
@@ -185,9 +236,10 @@ public class SlotMenuHandler {
 
   private boolean handleTokenMenuOpenedEntry(
       MenuEntry entry, MenuEntry[] entries, int index, SlotType slot) {
-    boolean changed = false;
-    applyTokenHoverTarget(entry, slot);
-    changed = true;
+    boolean changed = applyTokenHoverTarget(entry, slot);
+    if (!TokenItemWidgetScopes.isTokenLeftClickReorderContext(entry)) {
+      return changed;
+    }
     if (shouldDeprioritizeTokenOption(entry.getOption())) {
       entry.setDeprioritized(true);
       changed = true;
@@ -202,10 +254,11 @@ public class SlotMenuHandler {
     return changed;
   }
 
-  private void applyTokenLeftClickOrder(MenuEntry[] entries) {
+  private void applyTokenMenuChanges(MenuEntry[] entries) {
     int preferredIndex = -1;
     SlotType slot = null;
     boolean changed = false;
+    boolean reorderContext = false;
 
     for (int i = 0; i < entries.length; i++) {
       MenuEntry entry = entries[i];
@@ -213,28 +266,38 @@ public class SlotMenuHandler {
         continue;
       }
       int itemId = resolveItemId(entry, entry.getItemId());
-      if (!SlotType.isTokenItem(itemId)) {
+      SlotType entrySlot = resolveTokenSlot(itemId);
+      if (entrySlot == null) {
         continue;
       }
       if (slot == null) {
-        slot = SlotType.fromTokenItemId(itemId);
+        slot = entrySlot;
       }
-      applyTokenHoverTarget(entry, slot);
+      if (applyTokenHoverTarget(entry, entrySlot)) {
+        changed = true;
+      }
+
+      if (!TokenItemWidgetScopes.isTokenLeftClickReorderContext(entry)) {
+        continue;
+      }
+      reorderContext = true;
       if (shouldDeprioritizeTokenOption(entry.getOption())) {
         entry.setDeprioritized(true);
-        changed = true;
       }
       if (isPreferredTokenOption(entry, config.tokenLeftClick())) {
         preferredIndex = i;
       }
     }
 
-    if (preferredIndex >= 0 && slot != null) {
+    if (reorderContext && preferredIndex >= 0 && slot != null) {
       if (config.tokenLeftClick() == TokenLeftClick.EXAMINE && isExamineEntry(entries[preferredIndex])) {
         applyTokenSlotMenuText(entries[preferredIndex], slot);
       }
       if (preferredIndex < entries.length - 1) {
         promoteEntry(entries, preferredIndex);
+      }
+      if (config.tokenLeftClick() == TokenLeftClick.EXAMINE) {
+        prepareExamineForLeftClick(entries[entries.length - 1]);
       }
       changed = true;
     }
@@ -263,15 +326,51 @@ public class SlotMenuHandler {
   }
 
   private void applyTokenSlotMenuText(MenuEntry entry, SlotType slot) {
-    entry.setOption(displayService.getExamineOptionText(slot));
-    applyTokenHoverTarget(entry, slot);
+    applyTokenExamineMenuText(entry, slot);
   }
 
-  private void applyTokenHoverTarget(MenuEntry entry, SlotType slot) {
+  private void applyTokenExamineMenuText(MenuEntry entry, SlotType slot) {
+    entry.setOption(getExamineVerb(entry));
+    entry.setTarget(getColoredSlotTarget(entry, slot));
+  }
+
+  private String getColoredSlotTarget(MenuEntry entry, SlotType slot) {
+    return ColorUtil.wrapWithColorTag(
+        displayService.getHoverTargetText(slot, resolveEntryQuantity(entry)),
+        JagexColors.MENU_TARGET);
+  }
+
+  private int resolveEntryQuantity(MenuEntry entry) {
     Widget widget = entry.getWidget();
-    int quantity = widget != null ? widget.getItemQuantity() : 1;
-    String text = displayService.getHoverTargetText(slot, quantity);
-    entry.setTarget(ColorUtil.wrapWithColorTag(text, JagexColors.MENU_TARGET));
+    if (widget == null) {
+      return 1;
+    }
+    return BankItemUtils.resolvePlaceholderDisplayQuantity(
+        itemManager, widget.getItemId(), widget.getItemQuantity());
+  }
+
+  private boolean applyTokenHoverTarget(MenuEntry entry, SlotType slot) {
+    if (TokenItemWidgetScopes.isTokenBankActionContext(entry)) {
+      if (isExamineEntry(entry)) {
+        applyTokenExamineMenuText(entry, slot);
+        return true;
+      }
+      entry.setTarget(getColoredSlotTarget(entry, slot));
+      return true;
+    }
+
+    if (isExamineEntry(entry)) {
+      applyTokenExamineMenuText(entry, slot);
+      return true;
+    }
+
+    String slotLabel = displayService.getHoverTargetText(slot, resolveEntryQuantity(entry));
+    entry.setTarget(ColorUtil.wrapWithColorTag(slotLabel, JagexColors.MENU_TARGET));
+    return true;
+  }
+
+  private SlotType resolveTokenSlot(int itemId) {
+    return BankItemUtils.resolveSlotType(itemManager, itemId);
   }
 
   private static int resolveItemId(MenuEntry entry, int itemId) {
@@ -289,6 +388,20 @@ public class SlotMenuHandler {
     MenuEntry promoted = entries[index];
     System.arraycopy(entries, index + 1, entries, index, entries.length - index - 1);
     entries[entries.length - 1] = promoted;
+  }
+
+  /**
+   * Examine is added as {@link MenuAction#CC_OP_LOW_PRIORITY}, which is right-click only even when
+   * promoted to the top of the menu. Upgrade it so left-click executes instead of opening the menu.
+   */
+  private static void prepareExamineForLeftClick(MenuEntry entry) {
+    if (entry == null || !isExamineEntry(entry)) {
+      return;
+    }
+    if (entry.getType() == MenuAction.CC_OP_LOW_PRIORITY) {
+      entry.setType(MenuAction.CC_OP);
+    }
+    entry.setForceLeftClick(true);
   }
 
   private static boolean isPreferredTokenOption(MenuEntry entry, TokenLeftClick preferred) {
@@ -322,14 +435,19 @@ public class SlotMenuHandler {
     return option != null && EQUIP_OPTIONS.contains(option.toLowerCase(Locale.ENGLISH));
   }
 
-  private static boolean isExamineOption(String option) {
-    return option != null && option.toLowerCase(Locale.ENGLISH).startsWith("examine");
+  private static String getExamineVerb(MenuEntry entry) {
+    String option = entry.getOption();
+    if (option != null && option.toLowerCase(Locale.ENGLISH).startsWith("inspect")) {
+      return "Inspect";
+    }
+    return "Examine";
   }
 
-  private static boolean isEquipAction(MenuAction action, String option) {
-    return isEquipOption(option)
-        || action == MenuAction.WIDGET_TARGET
-        || action == MenuAction.WIDGET_TARGET_ON_WIDGET
-        || action == MenuAction.CC_OP;
+  private static boolean isExamineOption(String option) {
+    if (option == null) {
+      return false;
+    }
+    String lower = option.toLowerCase(Locale.ENGLISH);
+    return lower.startsWith("examine") || lower.startsWith("inspect");
   }
 }

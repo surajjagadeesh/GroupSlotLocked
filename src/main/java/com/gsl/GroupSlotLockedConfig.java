@@ -66,7 +66,7 @@ public interface GroupSlotLockedConfig extends Config {
   @ConfigItem(
       keyName = "tokenLeftClick",
       name = "Token left-click",
-      description = "Default left-click action for slot token items (inventory, bank, group storage)")
+      description = "Default left-click action for slot token items in inventory")
   default TokenLeftClick tokenLeftClick() {
     return TokenLeftClick.EXAMINE;
   }

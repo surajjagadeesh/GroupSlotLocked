@@ -101,7 +101,7 @@ public class SlotDisplayService {
   }
 
   public String getHoverTargetText(SlotType slot, int quantity) {
-    String label = getClaimLabel(slot);
+    String label = getDisplayName(slot) + " slot";
     if (quantity > 1) {
       return QuantityFormatter.formatNumber(quantity) + " x " + label;
     }
@@ -110,6 +110,12 @@ public class SlotDisplayService {
 
   public String getExamineOptionText(SlotType slot) {
     return "Examine " + getDisplayName(slot) + " slot";
+  }
+
+  public String getTokenExamineChatMessage(SlotType slot) {
+    return "Group Slot Locked: this token grants the <col=ff9040>"
+        + getDisplayName(slot)
+        + "</col> equipment slot.";
   }
 
   public BufferedImage getIcon(SlotType slot) {
