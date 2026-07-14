@@ -252,6 +252,12 @@ public class SlotMenuHandler {
     if (slot == null) {
       return;
     }
+    if (isEquipOption(entry.getOption())) {
+      // Token items are reskinned capes with no legitimate use equipped; drop the option
+      // entirely rather than just deprioritizing it so it can't be clicked by accident.
+      client.getMenu().removeMenuEntry(entry);
+      return;
+    }
     applyTokenHoverTarget(entry, slot);
     if (!TokenItemWidgetScopes.isTokenLeftClickReorderContext(entry)) {
       return;
@@ -372,9 +378,9 @@ public class SlotMenuHandler {
     if (option == null) {
       return false;
     }
-    return isEquipOption(option)
-        || option.equalsIgnoreCase("use")
-        || option.equalsIgnoreCase("drop");
+    // Wear/Wield/Equip on token items are removed entirely in onMenuEntryAdded, not just
+    // deprioritized, so they aren't handled here.
+    return option.equalsIgnoreCase("use") || option.equalsIgnoreCase("drop");
   }
 
   private void applyTokenSlotMenuText(MenuEntry entry, SlotType slot) {
