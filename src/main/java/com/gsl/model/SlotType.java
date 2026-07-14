@@ -21,7 +21,7 @@ public enum SlotType {
   OFF_HAND(EquipmentInventorySlot.SHIELD, ItemID.WILDERNESS_CAPE_30, "Off hand", "OH"),
   BOOTS(EquipmentInventorySlot.BOOTS, ItemID.WILDERNESS_CAPE_40, "Boots", "Bo"),
   RING(EquipmentInventorySlot.RING, ItemID.WILDERNESS_CAPE_50, "Ring", "Ri"),
-  GLOVES(EquipmentInventorySlot.GLOVES, ItemID.WILDERNESS_CAPE_7, "Gloves", "Gl");
+  GLOVES(EquipmentInventorySlot.GLOVES, ItemID.WILDERNESS_CAPE_2, "Gloves", "Gl");
   private static final Map<Integer, SlotType> BY_TOKEN_ID =
       Arrays.stream(values())
           .collect(Collectors.toMap(SlotType::getTokenItemId, Function.identity()));

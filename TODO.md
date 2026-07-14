@@ -20,4 +20,3 @@ Tracked ideas and follow-up work. Not yet implemented unless marked done.
 
 <!-- Future todos go below -->
 - [ ] setInventoryModel for the team capes to be some unused teleport tablet such as the "deadman teleport" so that if the model ever comes above our overlay it at least doesn't come up as a team cape.
-- [ ] update the team capes to be those from Richard (6, 16, 26, 36, 46), Larry (3, 13, 23, 33, 43), and Ian (2, 12, 22, 32, 42) who are the easiest to reach for a low-level account

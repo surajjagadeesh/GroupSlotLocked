@@ -1267,7 +1267,7 @@ Record account type (GIM / normal iron / main) and client version in PR or READM
 
 Decide with the team before or during implementation:
 
-1. **Token item choice:** Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 7 — confirmed.
+1. **Token item choice:** Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 2 — confirmed. Richard, Sam, and Ian are easy to trade without taking damage from enemies (good luck not getting PKed).
 2. **Over token cap behavior:** When holding >5 tokens, suspend all claims (current plan) vs. allow oldest 5 only?
 3. **Penalty severity:** Full black screen vs dimmed screen vs flashing border — start with black screen as specified.
 
