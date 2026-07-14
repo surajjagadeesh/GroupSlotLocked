@@ -11,19 +11,24 @@ public final class BankItemUtils {
     if (itemId <= 0) {
       return false;
     }
-    if (quantity <= 0) {
+    if (quantity <= 0 || quantity == Integer.MAX_VALUE) {
       return true;
     }
     return itemManager.getItemComposition(itemId).getPlaceholderTemplateId() != -1;
   }
 
-  /** Bank placeholders often store quantity 1 internally while the UI shows 0. */
+  /**
+   * Bank placeholders often store quantity 1 internally while the UI shows 0. Bank tag layout
+   * slots with no matching bank item use the real (non-placeholder) item ID but set quantity to
+   * {@link Integer#MAX_VALUE} with {@code ItemQuantityMode.NEVER} as a sentinel meaning "no
+   * quantity" (see LayoutManager#drawItem in RuneLite).
+   */
   public static int resolvePlaceholderDisplayQuantity(
       ItemManager itemManager, int itemId, int quantity) {
     if (itemId <= 0) {
       return quantity;
     }
-    if (quantity <= 0) {
+    if (quantity <= 0 || quantity == Integer.MAX_VALUE) {
       return 0;
     }
     if (itemManager.getItemComposition(itemId).getPlaceholderTemplateId() != -1) {
