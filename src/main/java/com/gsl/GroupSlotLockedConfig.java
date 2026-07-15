@@ -24,14 +24,6 @@ public interface GroupSlotLockedConfig extends Config {
   }
 
   @ConfigItem(
-      keyName = "showSlotPanel",
-      name = "Show slot panel",
-      description = "Show the slot availability sidebar panel")
-  default boolean showSlotPanel() {
-    return true;
-  }
-
-  @ConfigItem(
       keyName = "maxHeldTokens",
       name = "Max held tokens",
       description = "Maximum slot token items allowed in personal bank + inventory")
@@ -56,10 +48,10 @@ public interface GroupSlotLockedConfig extends Config {
   }
 
   @ConfigItem(
-      keyName = "showEquipmentClaimIndicators",
-      name = "Equipment claim indicators",
-      description = "Show a check/cross badge on each Worn Equipment tab slot for token claim status")
-  default boolean showEquipmentClaimIndicators() {
+      keyName = "showEquipmentIndicators",
+      name = "Equipment indicators",
+      description = "Show a check/cross badge on each Worn Equipment tab slot for token status")
+  default boolean showEquipmentIndicators() {
     return true;
   }
 

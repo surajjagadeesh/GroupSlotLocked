@@ -16,7 +16,6 @@ import java.io.Reader;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -26,15 +25,12 @@ import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.swing.JFileChooser;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 import net.runelite.client.ui.FontManager;
 import net.runelite.api.Point;
 import net.runelite.client.ui.overlay.OverlayUtil;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.QuantityFormatter;
 
 @Slf4j
@@ -114,18 +110,6 @@ public class SlotDisplayService {
 
   public String getDisplayName(SlotType slot) {
     return displayNames.getOrDefault(slot, slot.getDefaultDisplayName());
-  }
-
-  public String getPanelAbbrev(SlotType slot) {
-    String name = getDisplayName(slot);
-    if (name.length() <= 12) {
-      return name;
-    }
-    return slot.getDefaultAbbrev();
-  }
-
-  public String getClaimLabel(SlotType slot) {
-    return getDisplayName(slot) + " slot claim";
   }
 
   public String getHoverTargetText(SlotType slot, int quantity) {
@@ -281,45 +265,6 @@ public class SlotDisplayService {
     int x = bounds.x + 1;
     int y = bounds.y + metrics.getAscent() + 1;
     OverlayUtil.renderTextLocation(graphics, new Point(x, y), text, new Color(170, 170, 170));
-  }
-
-  public boolean hasCustomIcon(SlotType slot) {
-    return Files.isRegularFile(ICON_DIR.resolve(slot.fileName()));
-  }
-
-  public void importIcon(SlotType slot, Path sourceFile) throws IOException {
-    Files.createDirectories(ICON_DIR);
-    Path target = ICON_DIR.resolve(slot.fileName());
-    Files.copy(sourceFile, target, StandardCopyOption.REPLACE_EXISTING);
-    iconCache.remove(slot);
-  }
-
-  public void resetIcon(SlotType slot) throws IOException {
-    Files.deleteIfExists(ICON_DIR.resolve(slot.fileName()));
-    iconCache.remove(slot);
-  }
-
-  public void openIconFolder() {
-    try {
-      Files.createDirectories(ICON_DIR);
-      LinkBrowser.open(ICON_DIR.toUri().toString());
-    } catch (IOException ex) {
-      log.debug("Failed to open icon folder {}", ICON_DIR, ex);
-    }
-  }
-
-  public void promptImportIcon(SlotType slot) {
-    JFileChooser chooser = new JFileChooser();
-    chooser.setDialogTitle("Import icon for " + getDisplayName(slot));
-    chooser.setFileFilter(new FileNameExtensionFilter("PNG images", "png"));
-    if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
-      return;
-    }
-    try {
-      importIcon(slot, chooser.getSelectedFile().toPath());
-    } catch (IOException ex) {
-      log.debug("Failed to import icon for {}", slot, ex);
-    }
   }
 
   @Nullable

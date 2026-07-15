@@ -21,7 +21,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 
 /**
  * Draws a green check (token held) or red X (no token) badge on each slot of the full Worn
- * Equipment tab, so claim status is visible without checking the sidebar panel.
+ * Equipment tab, so claim status is visible at a glance.
  */
 public class EquipmentTokenClaimOverlay extends Overlay {
   private final Client client;
@@ -48,7 +48,7 @@ public class EquipmentTokenClaimOverlay extends Overlay {
 
   @Override
   public Dimension render(Graphics2D graphics) {
-    if (!config.showEquipmentClaimIndicators()) {
+    if (!config.showEquipmentIndicators()) {
       return null;
     }
     BufferedImage tick = spriteManager.getSprite(SpriteID.TICK, 0);

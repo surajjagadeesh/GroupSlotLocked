@@ -17,8 +17,7 @@ Group Slot Locked is a **voluntary Group Ironman challenge helper**. Players use
 The plugin provides:
 
 - Slot token tracking and equip validation
-- Sidebar panel with slot availability
-- Visual feedback (red highlights, penalty overlay, custom token icons)
+- Visual feedback (red highlights, penalty overlay, custom token icons, Worn Equipment tab claim badges)
 - Menu relabeling and optional left-click reordering for tokens
 - Bank search by custom slot names
 - Custom slot names and icons (local files only)
@@ -104,7 +103,6 @@ Extends bank search so queries like `ring` match the Ring slot token. Same gener
 | `customTokens` config | **Unused** today — if implemented as the entire ID source, could hit "player-provided IDs" content rule |
 | Icon replacement / tooltips | Visual-only overlays; no click-zone changes |
 | Red illegal-gear highlight | Visual feedback only |
-| Sidebar panel | Standard navigation panel |
 
 ---
 
@@ -142,7 +140,7 @@ Does **not** add new menu entries; only relabels, reorders, or removes existing 
 | `penaltyOverlay` | `true` | Black-screen penalty |
 | `highlightRestricted` | `true` | Red overlay on illegal gear |
 | `replaceTokenIcons` | `true` | Replace cape sprites |
-| `showEquipmentClaimIndicators` | `true` | Check/cross badge per slot on the Worn Equipment tab |
+| `showEquipmentIndicators` | `true` | Check/cross badge per slot on the Worn Equipment tab |
 | `chatWarnings` | `true` | Chat on illegal loadout / token cap |
 
 ---
@@ -173,7 +171,6 @@ Does **not** add new menu entries; only relabels, reorders, or removes existing 
 | Feature | Jagex | RuneLite hub risk |
 |---------|-------|-------------------|
 | Slot token tracking & validation | OK | OK |
-| Sidebar panel | OK | OK |
 | Red illegal-gear highlight | OK | OK |
 | Penalty black-screen overlay | OK | Low–medium |
 | Token icon replacement | OK | OK |

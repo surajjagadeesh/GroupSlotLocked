@@ -13,7 +13,6 @@
 3. [Slot Model](#3-slot-model)
 4. [Token Items (Slot Claims)](#4-token-items-slot-claims)
 5. [Architecture Overview](#5-architecture-overview)
-6. [Slot Availability UI](#6-slot-availability-ui)
 7. [Validation Logic](#7-validation-logic)
 8. [Visual Feedback](#8-visual-feedback)
 9. [Custom Slot Icons & Display Names](#9-custom-slot-icons--display-names)
@@ -54,12 +53,11 @@ When completing a task:
 | Validation | `VAL-*` | `STATE-1` (`SlotType`) | `SlotValidator` |
 | Overlays | `OVR-*` | `VAL-*` | `ItemRestrictionOverlay`, `ViolationOverlay` |
 | Menu handler | `MENU-*` | `STATE-1`, `VAL-*` | `SlotMenuHandler` |
-| Sidebar panel | `UI-*` | `STATE-*`, `VAL-*` | `GroupSlotLockedPanel` |
-| Icons + names | `ICON-*`, `NAME-*` | `UI-1` (panel exists) | `SlotDisplayService`, resources |
+| Icons + names | `ICON-*`, `NAME-*` | `STATE-1` | `SlotDisplayService`, resources |
 | Config + plugin wire-up | `CFG-*` | `P0-*` | `GroupSlotLockedConfig`, plugin lifecycle |
 | Polish / hub | `POL-*` | Phases 1–2 done | README, cleanup |
 
-**Dependency rule:** Do not mark `VAL-*` done until `SlotValidator` unit tests pass. Do not mark `OVR-*` / `MENU-*` / `UI-*` done until `./gradlew run` manual checks for that area pass.
+**Dependency rule:** Do not mark `VAL-*` done until `SlotValidator` unit tests pass. Do not mark `OVR-*` / `MENU-*` done until `./gradlew run` manual checks for that area pass.
 
 ---
 
@@ -73,7 +71,7 @@ When completing a task:
 | **Max 5 equipped** | At most **5** of the 11 tracked gear slots may be filled at any time. |
 | **Slot claim tokens** | A player may only equip a slot if they hold that slot's token in personal bank or inventory **and** total held tokens ≤ 5. |
 | **Accidental equip prevention** | Token items have Wear/Wield **deprioritized**; default left-click is **Examine** with slot-specific label text (see [§8.E](#e-static-left-click--menu-deprioritization)). |
-| **Slot availability UI** | Sidebar shows which slots you can currently use (see [§6](#6-slot-availability-ui)). |
+| **Slot availability UI** | Check/cross badges on the Worn Equipment tab show which slots you can currently use (`EquipmentTokenClaimOverlay`, see [§8](#8-visual-feedback)). |
 
 **No party plugin / no teammate sync.** Slot exclusivity across players is enforced by token distribution (each teammate holds different tokens), not by networking.
 
@@ -178,7 +176,7 @@ Cheap, tradable, visually distinct, easy to obtain. Use `net.runelite.api.gameva
 | RING | `WILDERNESS_CAPE_50` | Team-50 cape |
 | GLOVES | `WILDERNESS_CAPE_2` | Team-2 cape |
 
-> **Note:** Using capes for non-cape slots is intentional — they're dummy claim markers, not literal slot types. Document this for players (sidebar panel or config description).
+> **Note:** Using capes for non-cape slots is intentional — they're dummy claim markers, not literal slot types. Document this for players (config description or hub listing).
 
 Define a constant map in code:
 
@@ -226,7 +224,7 @@ Implementation rules:
 - Union claims from **personal inventory + personal bank only** into a single set.
 - Do **not** scan `InventoryID.WORN` for tokens.
 - Do **not** scan `InventoryID.GROUP_STORAGE` or `InventoryID.GROUP_STORAGE_INV` for tokens — items there grant **no** slot claims.
-- Compare to previous mask; only notify overlays / sidebar when the mask **changes** (avoid redundant work).
+- Compare to previous mask; only notify overlays when the mask **changes** (avoid redundant work).
 - Do **not** scan the entire scene or walk every container every frame — only personal inventory, personal bank (when available), and worn.
 
 #### Group storage exclusion (important for transfers)
@@ -253,7 +251,7 @@ private void refreshClaims() {
 }
 ```
 
-**New UX (recommended):** Track tokens visible in group storage separately (read-only, not for claims) so the panel can show e.g. *"Head token — in group storage (unavailable)"* with a distinct icon/state. This helps teams confirm a transfer is in progress without accidentally thinking the slot is still claimed.
+**New UX (recommended):** Track tokens visible in group storage separately (read-only, not for claims) so a future UI surface could show e.g. *"Head token — in group storage (unavailable)"* with a distinct icon/state. This helps teams confirm a transfer is in progress without accidentally thinking the slot is still claimed. `LocalSlotState.hasTokenInGroupStorage(SlotType)` already tracks this even though nothing currently renders it (the sidebar panel that would have was removed).
 
 If a player had a slot claim and deposits the **only** copy of that token into group storage, their claim should drop on the next refresh — equipping that slot becomes illegal (red highlights + penalty overlay if still worn).
 
@@ -274,7 +272,7 @@ Players trade slot tokens via group storage, direct trade, or drops. A common fl
 - [x] **STATE-7** — Subscribe `ItemContainerChanged` for INVENTORY, BANK, WORN
 - [x] **STATE-8** — Subscribe `GameStateChanged` → full refresh on `LOGGED_IN`
 - [x] **STATE-9** — Change-detection: only fire listeners when claim/equip masks change
-- [x] **STATE-10** — (Optional) Read-only scan of `GROUP_STORAGE` for "in transit" panel state
+- [x] **STATE-10** — (Optional) Read-only scan of `GROUP_STORAGE` for "in transit" UI state (tracked in `LocalSlotState`, not currently rendered anywhere)
 
 ---
 
@@ -299,14 +297,8 @@ Players trade slot tokens via group storage, direct trade, or drops. A common fl
 │ SlotValidator   │ │ SlotMenuHandler │ │ Overlays        │
 │                 │ │                 │ │ - red highlights│
 │                 │ │                 │ │ - black screen  │
-└────────┬────────┘ └─────────────────┘ └────────┬────────┘
-         │                                        │
-         └────────────────┬───────────────────────┘
-                          │
-                ┌─────────▼─────────┐
-                │ SlotPanel         │
-                │ (sidebar UI)      │
-                └───────────────────┘
+│                 │ │                 │ │ - claim badges  │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
 ### Core services
@@ -315,91 +307,13 @@ Players trade slot tokens via group storage, direct trade, or drops. A common fl
 |-------|----------------|
 | `SlotStateService` | Local worn slots, token claims (personal bank + inventory only; **excludes group storage**), held token count. Refreshes on events **and** every game tick (see [§4](#detecting-token-ownership)). |
 | `SlotValidator` | Pure functions: given local state + hypothetical equip, return `ValidationResult`. |
-| `SlotMenuHandler` | Token examine labels + Wear deprioritization. |
-| `GroupSlotLockedPanel` | Sidebar: which slots you can use. |
-| `GroupSlotLockedPlugin` | Wires events → services → overlays → panel |
+| `SlotMenuHandler` | Token examine labels + Wear removal. |
+| `GroupSlotLockedPlugin` | Wires events → services → overlays |
 
 ### Implementation tasks
 
-- [x] **CFG-3** — `GroupSlotLockedPlugin.startUp()`: inject services, subscribe events, add overlays + panel
-- [x] **CFG-4** — `GroupSlotLockedPlugin.shutDown()`: remove overlays, panel, cancel listeners
-
----
-
-## 6. Slot Availability UI
-
-Single **local-player** sidebar panel (`GroupSlotLockedPanel`). No teammate rows, no party data.
-
-### Purpose
-
-Answer at a glance:
-- Which of the 11 slots can I equip right now?
-- How many tokens am I holding (max 5)?
-- How many slots am I wearing (max 5)?
-
-### Layout
-
-```
-┌─ Group Slot Locked ─────────────┐
-│ Tokens: 4/5    Equipped: 3/5    │
-├─────────────────────────────────┤
-│ [H] [C] [N] [A] [B] [L]         │  ← icon + display name per slot (see §9)
-│ [MH][OH][Bo][Ri][Gl]            │
-├─────────────────────────────────┤
-│ ⚠ 6 tokens held — max is 5      │  ← warning when heldTokenCount > 5
-└─────────────────────────────────┘
-```
-
-Each cell shows a **custom icon** and **display name** from [§9](#9-custom-slot-icons--display-names) (defaults: Head, Cape, Main hand, …).
-
-Hover tooltip: `{displayName} — {state}` e.g. `Head — Available`.
-
-### Per-slot cell states
-
-| State | Condition | Visual |
-|-------|-----------|--------|
-| **Available** | Token in bank/inv for this slot AND `heldTokenCount ≤ 5` | Green border / tint |
-| **Equipped** | Slot currently worn (non-empty) | Filled + checkmark or item icon |
-| **No token** | Token not in personal bank/inv | Gray / dimmed |
-| **Over token cap** | Token present but `heldTokenCount > 5` | Orange warning — token exists but claim inactive |
-| **In group storage** | Token only in `GROUP_STORAGE` (optional read-only scan) | Striped / "in transit" — not usable |
-
-Only one state applies per cell; priority: Equipped > Over cap > Available > In group storage > No token.
-
-### Summary counters
-
-```java
-// Header labels — refresh on every SlotStateService change
-"Tokens: " + heldTokenCount + "/" + config.maxHeldTokens();   // default 5
-"Equipped: " + equippedCount + "/" + config.maxEquipped();    // default 5
-```
-
-When `heldTokenCount > maxHeldTokens`, show warning text and treat **all** slot claims as invalid until count drops (see `TOO_MANY_TOKENS` in [§7](#7-validation-logic)).
-
-### Implementation notes
-
-- Extend `PluginPanel`; register via `ClientToolbar` `NavigationButton` in `startUp()`.
-- Subscribe panel to state changes via `SlotStateService` listener or invalidate on `GameTick` when mask changes.
-- Use `ItemManager.getImage()` for equipped item thumbnail inside a slot cell (optional).
-- Panel is the **only** required UI — no world overlays for team status, no party panel integration.
-
-### Implementation tasks
-
-- [x] **UI-1** — Create `GroupSlotLockedPanel` extending `PluginPanel`
-- [x] **UI-2** — Register `NavigationButton` + sidebar icon in plugin `startUp()` / remove in `shutDown()`
-- [x] **UI-3** — Render 11-slot grid with per-cell states (Available / Equipped / No token / Over cap / In transit)
-- [x] **UI-4** — Header counters: `Tokens: x/5`, `Equipped: x/5`
-- [x] **UI-5** — Warning banner when `heldTokenCount > maxHeldTokens`
-- [x] **UI-6** — Wire panel to `SlotStateService` listener (refresh on mask change, not every frame repaint if unchanged)
-- [x] **UI-7** — (Optional) Equipped item thumbnail in cell via `ItemManager.getImage()`
-- [x] **UI-8** — Render `SlotDisplayService.getDisplayName(slot)` under each icon; tooltip on hover
-
-### Config
-
-```java
-@ConfigItem(keyName = "showSlotPanel", ...)
-default boolean showSlotPanel() { return true; }
-```
+- [x] **CFG-3** — `GroupSlotLockedPlugin.startUp()`: inject services, subscribe events, add overlays
+- [x] **CFG-4** — `GroupSlotLockedPlugin.shutDown()`: remove overlays, cancel listeners
 
 ---
 
@@ -676,7 +590,7 @@ Ship `blockIllegalEquips` default **off** if deprioritization works reliably; en
 
 ## 9. Custom Slot Icons & Display Names
 
-Each slot has a **default display name** and optional **user override**. Names appear in the sidebar panel, examine menu text, chat hints, and tooltips. Icons (separate from names) are covered below.
+Each slot has a **default display name** and optional **user override**. Names appear in examine menu text, chat hints, tooltips, and the Worn Equipment tab overlay. Icons (separate from names) are covered below.
 
 ### Default display names (built-in)
 
@@ -735,7 +649,7 @@ Resolution order: config string → `slot-names.json` → bundled defaults.
 
 ### `SlotDisplayService`
 
-Single service for **names + icons** (or split if preferred; one class keeps panel code simple):
+Single service for **names + icons** (or split if preferred; one class keeps overlay/menu code simple):
 
 ```java
 public class SlotDisplayService {
@@ -754,14 +668,13 @@ public class SlotDisplayService {
 - [x] **NAME-1** — Default name map for all 11 `SlotType` values (table above)
 - [x] **NAME-2** — Load optional `slot-names.json` from `RuneLite.RUNELITE_DIR/group-slot-locked/`
 - [x] **NAME-3** — Parse optional `customSlotNames` config override
-- [x] **NAME-4** — Wire names into panel cells, tooltips, `SlotMenuHandler`, examine chat hint
-- [x] **NAME-5** — Panel: show display name under icon (truncate with abbrev if > ~12 chars)
+- [x] **NAME-4** — Wire names into tooltips, `SlotMenuHandler`, examine chat hint
 
 ---
 
 ### Custom slot icons
 
-Each of the 11 slot claim tokens (Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 2) can have a **custom icon** shown in the sidebar panel, overlays, and token-item highlights. Icons help players quickly recognize which cape grants which slot without memorizing numbers.
+Each of the 11 slot claim tokens (Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 2) can have a **custom icon** shown in overlays and token-item highlights. Icons help players quickly recognize which cape grants which slot without memorizing numbers.
 
 ### Goals
 
@@ -852,41 +765,26 @@ void openIconFolder();
 
 ### How users upload icons
 
-Support **three paths** (implement at least 1 and 2):
+#### Manual file drop (only supported path)
 
-#### A. Sidebar panel import (recommended UX)
-
-In `GroupSlotLockedPanel`, each slot cell gets a right-click or ⚙ context menu:
-
-| Action | Behavior |
-|--------|----------|
-| **Edit name…** | Text input or prompt; save to `slot-names.json`; reload |
-| **Import icon…** | `JFileChooser` filtered to `.png`; copy selected file → `ICON_DIR/{slot}.png`; reload |
-| **Reset to default** | Delete override file; reload |
-| **Open icons folder** | Reveal `~/.runelite/group-slot-locked/icons/` so users can drag-drop multiple files |
-
-`JFileChooser` is explicitly allowed in AGENTS.md for user-initiated file ops. Perform copy + `ImageIO` on OkHttp executor or a small single-thread executor — **not** on the client thread.
-
-#### B. Manual file drop
-
-Document in README:
+There is no in-app import/reset UI (the sidebar panel that hosted it was removed — [§8](#8-visual-feedback) badges on the Worn Equipment tab replaced its "which slots can I use" purpose, and icon customization is now file-based only). Document in README:
 
 1. Create folder `%USERPROFILE%\.runelite\group-slot-locked\icons\` (Windows) or `~/.runelite/group-slot-locked/icons/` (macOS/Linux).
 2. Add PNGs named per the table above.
-3. In plugin panel, click **Reload icons** (or restart plugin).
+3. Restart the plugin (disable/enable) to pick up new files — `SlotDisplayService.reloadIcons()` clears the in-memory cache on plugin `startUp()`.
 
-#### C. Shareable icon pack (optional, Phase 4)
+#### Shareable icon pack (optional, not implemented)
 
 - **Export pack** — zip `icons/` folder + `manifest.json` for sharing with teammates.
-- **Import pack** — `JFileChooser` on a `.zip`; extract into `ICON_DIR` (validate paths, no zip-slip).
+- **Import pack** — extract a shared `.zip` into `ICON_DIR` (validate paths, no zip-slip).
 
-Teammates can share icon packs out of band — icons are local only.
+Teammates can share icon packs out of band — icons are local only. This remains speculative (`ICON-7`, unimplemented) since it would need a UI surface to trigger it from.
 
 ### Where icons appear
 
 | Surface | Usage |
 |---------|--------|
-| **Slot availability panel** | Primary — 11-icon grid for local player (see [§6](#6-slot-availability-ui)) |
+| **Equipment claim overlay** | Check/cross badges per slot on the Worn Equipment tab (`EquipmentTokenClaimOverlay`) |
 | **Token item overlay** | Small badge on Team capes in inventory/bank showing which slot they claim |
 | **Violation chat** | Optional inline icon in `"Head slot taken by …"` messages |
 | **Config preview** | Thumbnail row showing current icon set |
@@ -901,7 +799,7 @@ Ship lightweight defaults in repo (optimize PNGs before commit):
 - Option B: Downscaled team cape colors (6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 2) with slot label
 - Option C: No bundled files — rely on `ItemManager` token sprite until user imports
 
-Recommend **Option A or B** so the panel looks intentional before customization.
+Recommend **Option A or B** so overlays look intentional before customization.
 
 Example resource layout:
 
@@ -929,10 +827,8 @@ When `useCustomSlotIcons` is false, skip override lookup and use bundled → tok
 - [x] **ICON-1** — Icon tier fallback in `SlotDisplayService` (override → bundled → item sprite)
 - [x] **ICON-2** — Add bundled `icons/slots/*.png` defaults (11 files, optimized)
 - [x] **ICON-3** — Load/save overrides under `~/.runelite/group-slot-locked/icons/`
-- [x] **ICON-4** — Panel: use `getIcon(SlotType)` in slot grid cells
 - [x] **ICON-5** — (Optional) Token badge overlay on capes in inv/bank
-- [x] **ICON-6** — Panel: Import / Reset / Reload / Open folder via `JFileChooser`
-- [ ] **ICON-7** — (Optional) Zip pack import/export
+- [ ] **ICON-7** — (Optional) Zip pack import/export — no in-app trigger surface since the sidebar panel (and its import/reset/open-folder UI, `ICON-6`) was removed; manual file drop is the only supported path
 
 *(Manual verification: [§14 — Icon tests](#icon-tests))*
 
@@ -950,9 +846,6 @@ public interface GroupSlotLockedConfig extends Config {
 
     @ConfigItem(keyName = "highlightRestricted", ...)
     default boolean highlightRestricted() { return true; }
-
-    @ConfigItem(keyName = "showSlotPanel", ...)
-    default boolean showSlotPanel() { return true; }
 
     @ConfigItem(keyName = "maxHeldTokens", ...)
     default int maxHeldTokens() { return 5; }
@@ -988,7 +881,7 @@ public interface GroupSlotLockedConfig extends Config {
     default String customSlotNames() { return ""; }  // optional inline overrides: head=Tank helm,...
 
     @ConfigItem(keyName = "showSlotNameLabels", ...)
-    default boolean showSlotNameLabels() { return true; }  // display name under icon in panel
+    default boolean showSlotNameLabels() { return true; }  // display name in overlay text
 
     @ConfigItem(keyName = "customTokens", ...)
     default String customTokens() { return ""; }  // future: override token IDs per slot
@@ -1018,14 +911,11 @@ src/main/java/com/gsl/
 │   └── SlotDisplayService.java      # Slot display names + icon load/cache/import
 ├── menu/
 │   └── SlotMenuHandler.java         # Static token + illegal equip menu deprioritization
-├── overlay/
-│   ├── ItemRestrictionOverlay.java  # Red highlights
-│   └── ViolationOverlay.java        # Black screen
-└── ui/
-    └── GroupSlotLockedPanel.java    # Local slot availability sidebar
+└── overlay/
+    ├── ItemRestrictionOverlay.java  # Red highlights
+    └── ViolationOverlay.java        # Black screen
 
 src/main/resources/
-├── panel_icon.png                   # Plugin hub icon (optimize PNG size)
 └── icons/slots/                     # Bundled default slot icons (11 PNGs)
     ├── head.png
     ├── cape.png
@@ -1051,16 +941,15 @@ See [§13](#13-skeleton-cleanup-do-first). All `P0-*` must be `[x]` before featu
 
 **Done when:** [§14 solo tests](#solo-tests) T1–T8 pass.
 
-### Phase 2 — Slot availability panel + icons + names
-- [x] **PH2-1** — All `UI-*` tasks complete
+### Phase 2 — Icons, names + group storage
 - [x] **PH2-2** — All `NAME-*` tasks complete
 - [x] **PH2-3** — All `ICON-1` through `ICON-5` complete
 - [x] **PH2-4** — `OVR-7` chat warnings wired
 
-**Done when:** [§14 panel + group storage tests](#group-storage-tests) pass.
+**Done when:** [§14 group storage tests](#group-storage-tests) pass.
 
 ### Phase 3 — Polish & hub prep
-- [ ] **POL-1** — `ICON-6`, `ICON-7` (optional import/export)
+- [ ] **POL-1** — `ICON-7` (optional import/export)
 - [ ] **POL-2** — Remove `com.example.*` template code
 - [ ] **POL-3** — README: tokens, max 5 held, group storage transfers, testing steps
 - [ ] **POL-4** — Plugin descriptor description + tags finalized
@@ -1104,7 +993,7 @@ Per `AGENTS.md`: **agents cannot play the game for you.** Automated tests cover 
 | Layer | Command / tool | What it covers | Who runs it |
 |-------|----------------|----------------|-------------|
 | **Unit** | `./gradlew test` | `SlotValidator`, token counting, 2H slot math, `SlotType` mapping | Any agent / CI |
-| **Dev client** | `./gradlew run` | Overlays, panel, menus, bank refresh, group storage | Human on test account |
+| **Dev client** | `./gradlew run` | Overlays, menus, bank refresh, group storage | Human on test account |
 | **Sign-off** | Same dev client | Full golden path on GIM or alt with team capes | Plugin author |
 
 ### Setup — dev client
@@ -1112,7 +1001,7 @@ Per `AGENTS.md`: **agents cannot play the game for you.** Automated tests cover 
 1. From repo root: `./gradlew run` (Windows: `gradlew.bat run`).
 2. Log in per [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts) (Jagex account section).
 3. Enable **Group Slot Locked** in RuneLite plugin panel (wrench → search "Group Slot Locked").
-4. Open sidebar panel (plugin navigation button) so slot grid is visible.
+4. Open the Worn Equipment tab so the check/cross claim badges are visible.
 
 ### Setup — test items
 
@@ -1164,8 +1053,8 @@ Enable **Developer Tools** (RuneLite settings) if you need widget bounds debuggi
 
 ### Solo tests
 
-- [ ] **T1** — No tokens in bank/inv → panel all gray; equipping any gear shows red highlight
-- [ ] **T2** — Hold 3 distinct tokens in inv → panel shows 3 green slots; header `Tokens: 3/5`
+- [ ] **T1** — No tokens in bank/inv → all 11 equipment tab slots show a red cross; equipping any gear shows red highlight
+- [ ] **T2** — Hold 3 distinct tokens in inv → those 3 equipment tab slots show a green check
 - [ ] **T3** — Pick up 6th token → header `Tokens: 6/5` warning; all claims suspended; gear red
 - [ ] **T4** — Bank or drop one token → back to 5 → claims reactivate
 - [ ] **T5** — With Team-20 in bank, main-hand slot green; can equip weapon without red highlight
@@ -1177,7 +1066,7 @@ Enable **Developer Tools** (RuneLite settings) if you need widget bounds debuggi
 <summary>T1 step-by-step</summary>
 
 1. Empty bank/inv of all team capes.
-2. Open sidebar panel → all 11 cells gray/dimmed.
+2. Open Worn Equipment tab → all 11 slots show a red cross badge.
 3. Left-click wear any helm → red overlay on helm (if highlight enabled); penalty if already wearing illegal gear.
 
 </details>
@@ -1186,7 +1075,7 @@ Enable **Developer Tools** (RuneLite settings) if you need widget bounds debuggi
 <summary>T3 step-by-step</summary>
 
 1. Put 6 different team capes in inventory (Team-6, Team-16, Team-26, Team-36, Team-46, Team-10).
-2. Panel header shows `Tokens: 6/5` and warning text.
+2. Chat shows the "6/5 tokens held" warning (`chatWarnings` on); all equipment tab slots show a red cross even for slots you hold a token for.
 3. Try equipping gear for a slot you hold a token for → still red (claims suspended).
 
 </details>
@@ -1195,17 +1084,17 @@ Enable **Developer Tools** (RuneLite settings) if you need widget bounds debuggi
 
 ### Group storage tests
 
-- [ ] **G1** — Deposit only copy of head token (Team-6) to group storage → head cell gray; head gear red if worn
-- [ ] **G2** — Withdraw Team-6 to personal bank → head cell green
+- [ ] **G1** — Deposit only copy of head token (Team-6) to group storage → head slot badge turns red cross; head gear red if worn
+- [ ] **G2** — Withdraw Team-6 to personal bank → head slot badge turns green check
 - [ ] **G3** — Wear head gear while token only in group storage → penalty overlay active
 
 <details>
 <summary>G1 step-by-step</summary>
 
 1. Single Team-6 cape in inventory.
-2. Confirm head slot green in panel.
+2. Confirm head slot shows a green check on the equipment tab.
 3. Open group storage → deposit Team-6.
-4. Within ~1–2 ticks head slot gray; if still wearing helm, penalty overlay on.
+4. Within ~1–2 ticks head slot badge turns red; if still wearing helm, penalty overlay on.
 
 </details>
 
@@ -1213,9 +1102,9 @@ Enable **Developer Tools** (RuneLite settings) if you need widget bounds debuggi
 
 ### Edge cases
 
-- [ ] **E1** — Equip 2H weapon → panel/`Equipped` counts main + off as 2 slots
+- [ ] **E1** — Equip 2H weapon → counts main + off as 2 equipped slots (verify `OVER_EQUIP_LIMIT` triggers at the right threshold)
 - [ ] **E2** — Swap 2H for 1H + shield → equipped count updates correctly
-- [ ] **E3** — Receive token via trade mid-session → panel updates without relog
+- [ ] **E3** — Receive token via trade mid-session → equipment tab claim badges update without relog
 - [ ] **E4** — Close bank with tokens inside → claims persist; inv-only refresh still works
 
 ---
@@ -1234,15 +1123,14 @@ Enable **Developer Tools** (RuneLite settings) if you need widget bounds debuggi
 
 ### Display name tests
 
-- [ ] **N1** — Panel shows default names (Head, Main hand, …) under icons
-- [ ] **N2** — Custom name via `slot-names.json` → panel + examine menu use new label
-- [ ] **N3** — `showSlotNameLabels = false` → icons only, no text under cells
+- [ ] **N1** — Default names (Head, Main hand, …) appear in examine menu text and tooltips
+- [ ] **N2** — Custom name via `slot-names.json` → examine menu and tooltips use new label
 
 ### Icon tests
 
-- [ ] **I1** — Default icons show for all 11 panel cells
-- [ ] **I2** — Import custom PNG via panel → updates after reload
-- [ ] **I3** — Reset icon → bundled/token fallback
+- [ ] **I1** — Default icons show for all 11 tokens (inventory/bank/equipment overlays)
+- [ ] **I2** — Drop custom PNG into `.runelite/group-slot-locked/icons/` → shows after plugin restart
+- [ ] **I3** — Delete override PNG → bundled/token fallback
 - [ ] **I4** — Token badge on capes in inventory when `showTokenBadge` enabled
 
 ---
@@ -1251,7 +1139,7 @@ Enable **Developer Tools** (RuneLite settings) if you need widget bounds debuggi
 
 Human tester confirms on a **real session** (not just login screen):
 
-1. [ ] **S1** — Golden path: 5 tokens assigned → equip 5 gear slots → panel green → no penalty
+1. [ ] **S1** — Golden path: 5 tokens assigned → equip 5 gear slots → all badges green check, no penalty
 2. [ ] **S2** — Transfer token via group storage → claim drops → re-grants after withdraw
 3. [ ] **S3** — Plugin disable → all menus/overlays revert to vanilla
 4. [ ] **S4** — `./gradlew test` green; `./gradlew build` succeeds
@@ -1281,7 +1169,6 @@ Decide with the team before or during implementation:
 | `ItemComposition.getWearPos1/2/3()` | Which slots an item uses |
 | `WidgetItemOverlay` | Red item highlights |
 | `InterfaceID` (gameval) | Widget lookups for penalty cutouts |
-| `ItemManager.getImage()` | Slot icons + equipped item thumbnails in panel |
 | `MenuEntryAdded` / `MenuOpened` | Deprioritize/reorder Wear on tokens and illegal gear |
 | `MenuEntry.setOption()` / `setTarget()` | Slot-specific Examine labels on token items |
 | `MenuEntry.setDeprioritized()` | Move Wear below Examine for left-click safety |

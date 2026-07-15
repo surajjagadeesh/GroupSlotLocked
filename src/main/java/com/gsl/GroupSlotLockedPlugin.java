@@ -15,8 +15,6 @@ import com.gsl.service.SlotDisplayService;
 import com.gsl.service.SlotStateService;
 import com.gsl.service.TokenModelOverrideService;
 import com.gsl.service.ViolationNotifier;
-import com.gsl.ui.GroupSlotLockedPanel;
-import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -36,15 +34,12 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.ui.ClientToolbar;
-import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.util.ImageUtil;
 
 @Slf4j
 @PluginDescriptor(
     name = "Group Slot Locked",
-    description = "Slot token claims and equip limits for group ironman teams",
+    description = "Slot token requirements and equip limits for group ironman teams",
     tags = {"ironman", "group", "equipment"},
     enabledByDefault = false)
 public class GroupSlotLockedPlugin extends Plugin {
@@ -63,35 +58,15 @@ public class GroupSlotLockedPlugin extends Plugin {
   @Inject private TokenTooltipOverlay tokenTooltipOverlay;
   @Inject private ViolationOverlay violationOverlay;
   @Inject private EquipmentTokenClaimOverlay equipmentTokenClaimOverlay;
-  @Inject private GroupSlotLockedPanel panel;
   @Inject private OverlayManager overlayManager;
-  @Inject private ClientToolbar clientToolbar;
   @Inject private EventBus eventBus;
   @Inject private ClientThread clientThread;
   @Inject private GroupSlotLockedConfig config;
-  private NavigationButton navButton;
 
   @Override
   protected void startUp() {
     displayService.ensureDefaultIcons();
     displayService.warmIconCache();
-    BufferedImage icon;
-    try {
-      icon = ImageUtil.loadImageResource(getClass(), "/panel_icon.png");
-    } catch (RuntimeException e) {
-      log.warn("Failed to load panel icon, using blank fallback", e);
-      icon = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
-    }
-    navButton =
-        NavigationButton.builder()
-            .tooltip("Group Slot Locked")
-            .icon(icon)
-            .priority(5)
-            .panel(panel)
-            .build();
-    if (config.showSlotPanel()) {
-      clientToolbar.addNavigation(navButton);
-    }
     overlayManager.add(itemRestrictionOverlay);
     overlayManager.add(tokenInventoryDragOverlay);
     overlayManager.add(tokenBankDragOverlay);
@@ -117,7 +92,6 @@ public class GroupSlotLockedPlugin extends Plugin {
 
   @Override
   protected void shutDown() {
-    clientToolbar.removeNavigation(navButton);
     overlayManager.remove(itemRestrictionOverlay);
     overlayManager.remove(tokenInventoryDragOverlay);
     overlayManager.remove(tokenBankDragOverlay);

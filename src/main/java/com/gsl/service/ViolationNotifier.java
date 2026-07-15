@@ -80,7 +80,7 @@ public class ViolationNotifier {
   private String buildMissingClaimMessage(LocalSlotState state) {
     SlotType missing = slotValidator.findMissingClaimSlot(state).orElse(null);
     if (missing == null) {
-      return "Group Slot Locked: illegal loadout — missing slot token claim.";
+      return "Group Slot Locked: illegal loadout — missing a slot token.";
     }
     int mainHandId = state.getEquippedItemId(SlotType.MAIN_HAND);
     int offHandId = state.getEquippedItemId(SlotType.OFF_HAND);
