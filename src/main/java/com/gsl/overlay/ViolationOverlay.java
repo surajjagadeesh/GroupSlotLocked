@@ -41,7 +41,7 @@ public class ViolationOverlay extends Overlay {
 
   @Override
   public Dimension render(Graphics2D graphics) {
-    if (!config.enablePlugin() || !config.penaltyOverlay()) {
+    if (!config.penaltyOverlay()) {
       return null;
     }
     if (!slotValidator.isLoadoutIllegal(slotStateService.getState())) {

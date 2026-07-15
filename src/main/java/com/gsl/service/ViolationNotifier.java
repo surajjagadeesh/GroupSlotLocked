@@ -30,7 +30,7 @@ public class ViolationNotifier {
   }
 
   public void onStateChanged(LocalSlotState state) {
-    if (!config.enablePlugin() || !config.chatWarnings()) {
+    if (!config.chatWarnings()) {
       wasIllegal = slotValidator.isLoadoutIllegal(state);
       wasOverTokenCap = state.getHeldTokenCount() > config.maxHeldTokens();
       return;

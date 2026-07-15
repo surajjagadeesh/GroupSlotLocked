@@ -53,7 +53,7 @@ public class TokenPressHoldOverlay extends Overlay {
 
   @Override
   public Dimension render(Graphics2D graphics) {
-    if (!config.enablePlugin() || !config.replaceTokenIcons()) {
+    if (!config.replaceTokenIcons()) {
       return null;
     }
     TokenDragIconRenderer.renderStationaryHoldCover(

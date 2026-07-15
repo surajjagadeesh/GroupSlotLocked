@@ -1,6 +1,5 @@
 package com.gsl.menu;
 
-import com.gsl.GroupSlotLockedConfig;
 import com.gsl.model.SlotType;
 import com.gsl.service.SlotDisplayService;
 import com.gsl.util.BankItemUtils;
@@ -41,7 +40,6 @@ public class SlotMenuHandler {
   private int pendingSuppressTokenExamineItemId = -1;
   private int pendingSuppressTokenExamineUntilTick = -1;
   private final Client client;
-  private final GroupSlotLockedConfig config;
   private final SlotDisplayService displayService;
   private final ChatMessageManager chatMessageManager;
   private final ItemManager itemManager;
@@ -49,12 +47,10 @@ public class SlotMenuHandler {
   @Inject
   SlotMenuHandler(
       Client client,
-      GroupSlotLockedConfig config,
       SlotDisplayService displayService,
       ChatMessageManager chatMessageManager,
       ItemManager itemManager) {
     this.client = client;
-    this.config = config;
     this.displayService = displayService;
     this.chatMessageManager = chatMessageManager;
     this.itemManager = itemManager;
@@ -62,9 +58,6 @@ public class SlotMenuHandler {
 
   @Subscribe
   public void onMenuEntryAdded(MenuEntryAdded event) {
-    if (!config.enablePlugin()) {
-      return;
-    }
     MenuEntry entry = event.getMenuEntry();
     if (!TokenItemWidgetScopes.isTokenItemMenuContext(entry)) {
       return;
@@ -80,9 +73,6 @@ public class SlotMenuHandler {
 
   @Subscribe
   public void onMenuOpened(MenuOpened event) {
-    if (!config.enablePlugin()) {
-      return;
-    }
     MenuEntry[] entries = event.getMenuEntries();
     boolean changed = false;
     for (int i = 0; i < entries.length; i++) {
@@ -103,7 +93,7 @@ public class SlotMenuHandler {
 
   @Subscribe(priority = Short.MIN_VALUE)
   public void onBeforeRender(BeforeRender event) {
-    if (!config.enablePlugin() || client.isMenuOpen()) {
+    if (client.isMenuOpen()) {
       return;
     }
     MenuEntry[] entries = client.getMenu().getMenuEntries();
@@ -117,9 +107,6 @@ public class SlotMenuHandler {
 
   @Subscribe(priority = Short.MIN_VALUE)
   public void onPostMenuSort(PostMenuSort event) {
-    if (!config.enablePlugin() || client.isMenuOpen()) {
-      return;
-    }
     MenuEntry[] entries = client.getMenu().getMenuEntries();
     if (applyTokenMenuChanges(entries)) {
       client.getMenu().setMenuEntries(entries);
@@ -128,9 +115,6 @@ public class SlotMenuHandler {
 
   @Subscribe
   public void onMenuOptionClicked(MenuOptionClicked event) {
-    if (!config.enablePlugin()) {
-      return;
-    }
     MenuEntry entry = event.getMenuEntry();
     int itemId = resolveItemId(entry);
     if (itemId <= 0) {
@@ -155,7 +139,7 @@ public class SlotMenuHandler {
       clearPendingTokenExamineSuppression();
     }
 
-    if (!config.enablePlugin() || client.isMenuOpen()) {
+    if (client.isMenuOpen()) {
       return;
     }
     MenuEntry[] entries = client.getMenu().getMenuEntries();
@@ -169,7 +153,7 @@ public class SlotMenuHandler {
 
   @Subscribe(priority = Short.MAX_VALUE)
   public void onScriptCallbackEvent(ScriptCallbackEvent event) {
-    if (!config.enablePlugin() || !isSuppressingTokenExamine()) {
+    if (!isSuppressingTokenExamine()) {
       return;
     }
     if (!"chatFilterCheck".equals(event.getEventName())) {
@@ -187,7 +171,7 @@ public class SlotMenuHandler {
 
   @Subscribe(priority = -2)
   public void onChatMessage(ChatMessage event) {
-    if (!config.enablePlugin() || !isSuppressingTokenExamine()) {
+    if (!isSuppressingTokenExamine()) {
       return;
     }
     if (event.getType() != ChatMessageType.ITEM_EXAMINE) {

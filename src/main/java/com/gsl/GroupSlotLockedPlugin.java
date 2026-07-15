@@ -134,9 +134,6 @@ public class GroupSlotLockedPlugin extends Plugin {
 
   @Subscribe
   public void onGameTick(GameTick tick) {
-    if (!config.enablePlugin()) {
-      return;
-    }
     slotStateService.refreshInventoryAndWorn();
     int interval = Math.max(1, config.bankRefreshInterval());
     if (client.getTickCount() % interval == 0) {
@@ -147,9 +144,6 @@ public class GroupSlotLockedPlugin extends Plugin {
 
   @Subscribe
   public void onItemContainerChanged(ItemContainerChanged event) {
-    if (!config.enablePlugin()) {
-      return;
-    }
     int id = event.getContainerId();
     if (id == InventoryID.INV
         || id == InventoryID.BANK
@@ -165,9 +159,6 @@ public class GroupSlotLockedPlugin extends Plugin {
 
   @Subscribe
   public void onScriptPostFired(ScriptPostFired event) {
-    if (!config.enablePlugin()) {
-      return;
-    }
     if (event.getScriptId() == ScriptID.BANKMAIN_FINISHBUILDING
         || event.getScriptId() == ScriptID.GROUP_IRONMAN_STORAGE_BUILD) {
       slotStateService.refreshAll();
@@ -180,19 +171,15 @@ public class GroupSlotLockedPlugin extends Plugin {
       return;
     }
     slotStateService.reloadSnapshots();
-    if (config.enablePlugin()) {
-      slotStateService.refreshAll();
-      violationNotifier.onStateChanged(slotStateService.getState());
-    }
+    slotStateService.refreshAll();
+    violationNotifier.onStateChanged(slotStateService.getState());
   }
 
   @Subscribe
   public void onRuneScapeProfileChanged(RuneScapeProfileChanged event) {
     slotStateService.reloadSnapshots();
-    if (config.enablePlugin()) {
-      slotStateService.refreshAll();
-      violationNotifier.onStateChanged(slotStateService.getState());
-    }
+    slotStateService.refreshAll();
+    violationNotifier.onStateChanged(slotStateService.getState());
   }
 
   @Subscribe

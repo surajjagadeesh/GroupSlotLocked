@@ -48,7 +48,7 @@ public class EquipmentTokenClaimOverlay extends Overlay {
 
   @Override
   public Dimension render(Graphics2D graphics) {
-    if (!config.enablePlugin() || !config.showEquipmentClaimIndicators()) {
+    if (!config.showEquipmentClaimIndicators()) {
       return null;
     }
     BufferedImage tick = spriteManager.getSprite(SpriteID.TICK, 0);

@@ -945,9 +945,6 @@ Rename config group from `"example"` → `"group-slot-locked"`.
 ```java
 @ConfigGroup("group-slot-locked")
 public interface GroupSlotLockedConfig extends Config {
-    @ConfigItem(keyName = "enablePlugin", ...)
-    default boolean enablePlugin() { return true; }
-
     @ConfigItem(keyName = "penaltyOverlay", ...)
     default boolean penaltyOverlay() { return true; }
 

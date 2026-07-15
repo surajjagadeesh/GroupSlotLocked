@@ -7,14 +7,6 @@ import net.runelite.client.config.ConfigItem;
 @ConfigGroup("group-slot-locked")
 public interface GroupSlotLockedConfig extends Config {
   @ConfigItem(
-      keyName = "enablePlugin",
-      name = "Enable plugin",
-      description = "Enable Group Slot Locked enforcement and UI")
-  default boolean enablePlugin() {
-    return true;
-  }
-
-  @ConfigItem(
       keyName = "penaltyOverlay",
       name = "Penalty overlay",
       description =

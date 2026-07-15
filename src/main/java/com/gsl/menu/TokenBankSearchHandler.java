@@ -1,6 +1,5 @@
 package com.gsl.menu;
 
-import com.gsl.GroupSlotLockedConfig;
 import com.gsl.model.SlotType;
 import com.gsl.service.SlotDisplayService;
 import com.gsl.util.BankItemUtils;
@@ -32,25 +31,19 @@ public class TokenBankSearchHandler {
           Pattern.CASE_INSENSITIVE);
 
   private final Client client;
-  private final GroupSlotLockedConfig config;
   private final SlotDisplayService displayService;
   private final ItemManager itemManager;
 
   @Inject
-  TokenBankSearchHandler(
-      Client client,
-      GroupSlotLockedConfig config,
-      SlotDisplayService displayService,
-      ItemManager itemManager) {
+  TokenBankSearchHandler(Client client, SlotDisplayService displayService, ItemManager itemManager) {
     this.client = client;
-    this.config = config;
     this.displayService = displayService;
     this.itemManager = itemManager;
   }
 
   @Subscribe(priority = 0)
   public void onScriptCallbackEvent(ScriptCallbackEvent event) {
-    if (!config.enablePlugin() || !"bankSearchFilter".equals(event.getEventName())) {
+    if (!"bankSearchFilter".equals(event.getEventName())) {
       return;
     }
 

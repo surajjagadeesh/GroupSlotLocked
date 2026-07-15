@@ -61,25 +61,7 @@ The plugin provides:
 
 These are unlikely Jagex violations but may draw scrutiny from RuneLite Plugin Hub reviewers.
 
-### 1. `blockIllegalEquips` (default: **off**) — highest hub risk
-
-**File:** `SlotMenuHandler.onMenuOptionClicked()`
-
-When enabled, calls `event.consume()` on Wear/Wield clicks for token items and gear that fails local validation. This **blocks the equip action client-side** before it reaches the server.
-
-- Default off is compliance-friendly
-- Similar to click-blocker plugins — reviewers often scrutinize these
-- **Recommendation:** Keep off by default; describe clearly as optional self-enforcement in hub listing
-
-### 2. `deprioritizeIllegalEquips` (default: **on**)
-
-**File:** `SlotMenuHandler` (`onMenuEntryAdded`, `onMenuOpened`)
-
-Moves Wear/Wield/Equip below other options when gear fails validation. Conditional menu manipulation based on **local item rules**, not NPC type, friend status, or PvP targeting.
-
-RuneLite's rule targets conditional removal based on NPC/player context. This is closer to self-restriction on your own gear. Many restriction-helper plugins do similar things, but hub acceptance is not guaranteed.
-
-### 3. Token left-click reordering (default: Examine)
+### 1. Token left-click reordering (default: Examine)
 
 **File:** `SlotMenuHandler.applyTokenMenuChanges()`, `prepareExamineForLeftClick()`
 
@@ -87,7 +69,9 @@ Promotes Examine/Drop/Use for Wilderness Cape tokens in inventory and uses `setF
 
 Bank withdraw/deposit left-click is **not** reordered — only target text is relabeled.
 
-### 4. Chat examine suppression
+Wear/Wield/Equip on token items is **removed entirely** (`client.getMenu().removeMenuEntry()`), not just deprioritized — the token is a reskinned cape with no legitimate use equipped, so the option never appears rather than being reordered.
+
+### 2. Chat examine suppression
 
 **File:** `SlotMenuHandler.onScriptCallbackEvent("chatFilterCheck")`, `onChatMessage()`
 
@@ -97,13 +81,13 @@ After examining a token, filters the vanilla `ITEM_EXAMINE` message (~5 ticks) a
 - Does filter incoming chat — unusual but not on the forbidden list
 - Low–medium hub risk; fine for personal use
 
-### 5. Penalty overlay (`penaltyOverlay`, default: **on**)
+### 3. Penalty overlay (`penaltyOverlay`, default: **on**)
 
 **File:** `ViolationOverlay`
 
 Blacks out the game world while leaving inventory, equipment, and bank usable. Voluntary self-penalty — does not hide Jagex UI components or resize click zones. Unusual but aligned with challenge-mode intent.
 
-### 6. Bank search script callback
+### 4. Bank search script callback
 
 **File:** `TokenBankSearchHandler.onScriptCallbackEvent("bankSearchFilter")`
 
@@ -132,39 +116,34 @@ Extends bank search so queries like `ring` match the Ring slot token. Same gener
 |-------------|------|-----------|
 | Relabel target | Token menu contexts (inv, bank, equipment) | `entry.setTarget(colored slot label)` |
 | Relabel Examine option | Examine entries | `entry.setOption("Examine")` + slot target |
-| Deprioritize Wear/Wield/Use/Drop | Inventory left-click reorder context | `entry.setDeprioritized(true)` per `tokenLeftClick` |
+| Remove Wear/Wield/Equip entirely | Token items, any menu context | `client.getMenu().removeMenuEntry(entry)` |
+| Deprioritize Use/Drop | Inventory left-click reorder context | `entry.setDeprioritized(true)` |
 | Promote preferred left-click | Inventory, menu open or hover | `promoteEntry()` moves preferred option to top |
-| Force left-click Examine | `tokenLeftClick = EXAMINE` | `entry.setType(CC_OP)`, `setForceLeftClick(true)` |
-| Deprioritize illegal equips | `deprioritizeIllegalEquips` on | `setDeprioritized(true)` on Wear/Wield for failing gear |
-| Consume equip click | `blockIllegalEquips` on | `event.consume()` on Wear/Wield |
+| Force left-click Examine | Token items in inventory | `entry.setType(CC_OP)`, `setForceLeftClick(true)` |
 
-Does **not** add new menu entries.
+Does **not** add new menu entries; only relabels, reorders, or removes existing ones on the 11 hardcoded token item IDs.
 
 ### Overlays
 
 | Overlay | Renders |
 |---------|---------|
-| `ItemRestrictionOverlay` | Token icon replacement; red fill on illegal gear |
+| `ItemRestrictionOverlay` | Token icon replacement; red outline on illegal gear |
 | `TokenInventoryDragOverlay` / `TokenBankDragOverlay` | Custom token icon on drag ghosts |
 | `TokenPressHoldOverlay` | Custom icon on click-hold |
 | `TokenItemDragOverlay` | Custom icon on bank tag drag layer |
 | `TokenTooltipOverlay` | Slot-name tooltip; suppresses Item Stats box |
 | `ViolationOverlay` | Black screen with cutouts for inv/equipment/bank |
+| `EquipmentTokenClaimOverlay` | Check/cross badge per slot on the Worn Equipment tab (token claim status) |
 
 ### Config defaults
 
 | Key | Default | Notes |
 |-----|---------|-------|
-| `enablePlugin` | `true` | Master toggle |
 | `penaltyOverlay` | `true` | Black-screen penalty |
 | `highlightRestricted` | `true` | Red overlay on illegal gear |
-| `deprioritizeIllegalEquips` | `true` | Deprioritize Wear/Wield on illegal gear |
-| `blockIllegalEquips` | **`false`** | Consume Wear/Wield clicks |
-| `tokenLeftClick` | `EXAMINE` | Default left-click for tokens |
-| `tokenExamineHint` | `true` | Custom chat on token examine |
 | `replaceTokenIcons` | `true` | Replace cape sprites |
+| `showEquipmentClaimIndicators` | `true` | Check/cross badge per slot on the Worn Equipment tab |
 | `chatWarnings` | `true` | Chat on illegal loadout / token cap |
-| `customTokens` | `""` | **Unused** (future) |
 
 ---
 
@@ -174,19 +153,17 @@ Does **not** add new menu entries.
 |----------|------------|
 | **Jagex / playing the game** | OK — self-imposed ironman helper, no cheating or automation |
 | **RuneLite personal dev use** | OK |
-| **RuneLite Plugin Hub** | Probably OK with caveats — strongest risks are `blockIllegalEquips` and default-on `deprioritizeIllegalEquips` |
+| **RuneLite Plugin Hub** | Probably OK — remaining caveats are the penalty black-screen overlay and chat examine suppression, both low–medium risk |
 
 ---
 
 ## Hub Submission Recommendations
 
-1. Keep `blockIllegalEquips` **off by default** (already done).
-2. Describe the plugin as **voluntary team challenge rules**, not Jagex-recognized enforcement.
-3. Be prepared to explain that deprioritization is **self-restriction on your own gear**, not PvP/NPC menu targeting.
-4. Do not ship `customTokens` until the design avoids relying entirely on user-provided item IDs (see [Custom tokens (`customTokens`) — design guidance](#custom-tokens-customtokens--design-guidance) below).
-5. Consider hub description language such as:
+1. Describe the plugin as **voluntary team challenge rules**, not Jagex-recognized enforcement.
+2. Do not ship `customTokens` until the design avoids relying entirely on user-provided item IDs (see [Custom tokens (`customTokens`) — design guidance](#custom-tokens-customtokens--design-guidance) below).
+3. Consider hub description language such as:
    - "Self-imposed Group Ironman slot claim system"
-   - "Visual warnings and optional click deprioritization — equip blocking is opt-in and off by default"
+   - "Visual warnings only — no equip blocking or menu entry removal beyond the fixed token set"
    - "Does not communicate with external servers"
 
 ---
@@ -200,9 +177,8 @@ Does **not** add new menu entries.
 | Red illegal-gear highlight | OK | OK |
 | Penalty black-screen overlay | OK | Low–medium |
 | Token icon replacement | OK | OK |
-| Token menu relabel / reorder / force left-click | OK | Low |
-| Deprioritize illegal equips (default on) | OK | Medium |
-| Block illegal equips (default off) | Review | Medium–high when enabled |
+| Token menu relabel / reorder / remove Wear / force left-click | OK | Low |
+| Equipment claim overlay (check/cross badges) | OK | OK |
 | Token examine chat + suppress vanilla | OK | Low–medium |
 | Bank search slot-name matching | OK | Low |
 | Chat violation warnings | OK | OK |

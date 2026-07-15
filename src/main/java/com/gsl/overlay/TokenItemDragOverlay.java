@@ -34,7 +34,7 @@ public class TokenItemDragOverlay extends Overlay {
 
   @Override
   public Dimension render(Graphics2D graphics) {
-    if (!config.enablePlugin() || !config.replaceTokenIcons()) {
+    if (!config.replaceTokenIcons()) {
       return null;
     }
     TokenDragIconRenderer.renderDraggedWidgetIcon(graphics, client, itemManager, displayService);

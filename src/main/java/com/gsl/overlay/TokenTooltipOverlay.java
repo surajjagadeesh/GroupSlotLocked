@@ -56,7 +56,7 @@ public class TokenTooltipOverlay extends Overlay {
 
   @Override
   public Dimension render(Graphics2D graphics) {
-    if (!config.enablePlugin() || client.isMenuOpen()) {
+    if (client.isMenuOpen()) {
       return null;
     }
     HoveredToken hovered = resolveHoveredToken();

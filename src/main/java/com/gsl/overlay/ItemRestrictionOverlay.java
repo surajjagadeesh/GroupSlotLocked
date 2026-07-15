@@ -55,9 +55,6 @@ public class ItemRestrictionOverlay extends WidgetItemOverlay {
 
   @Override
   public void renderItemOverlay(Graphics2D graphics, int itemId, WidgetItem widgetItem) {
-    if (!config.enablePlugin()) {
-      return;
-    }
     Rectangle bounds = widgetItem.getCanvasBounds();
     if (config.replaceTokenIcons() && BankItemUtils.resolveSlotType(itemManager, itemId) != null) {
       TokenDragIconRenderer.renderWidgetItemIcon(
