@@ -2,6 +2,7 @@ package com.gsl.service;
 
 import com.gsl.GroupSlotLockedConfig;
 import com.gsl.model.LocalSlotState;
+import com.gsl.model.SlotType;
 import com.gsl.model.Violation;
 import java.awt.Color;
 import javax.inject.Inject;
@@ -15,6 +16,7 @@ import net.runelite.client.util.ColorUtil;
 public class ViolationNotifier {
   private final GroupSlotLockedConfig config;
   private final SlotValidator slotValidator;
+  private final SlotDisplayService displayService;
   private final ChatMessageManager chatMessageManager;
   private boolean wasIllegal;
   private boolean wasOverTokenCap;
@@ -23,9 +25,11 @@ public class ViolationNotifier {
   ViolationNotifier(
       GroupSlotLockedConfig config,
       SlotValidator slotValidator,
+      SlotDisplayService displayService,
       ChatMessageManager chatMessageManager) {
     this.config = config;
     this.slotValidator = slotValidator;
+    this.displayService = displayService;
     this.chatMessageManager = chatMessageManager;
   }
 
@@ -65,12 +69,33 @@ public class ViolationNotifier {
         case OVER_EQUIP_LIMIT:
           return "Group Slot Locked: illegal loadout — too many equipment slots filled.";
         case NO_SLOT_CLAIM:
-          return "Group Slot Locked: illegal loadout — missing slot token claim.";
+          return buildMissingClaimMessage(state);
         default:
           break;
       }
     }
     return "Group Slot Locked: illegal loadout — unequip restricted gear.";
+  }
+
+  private String buildMissingClaimMessage(LocalSlotState state) {
+    SlotType missing = slotValidator.findMissingClaimSlot(state).orElse(null);
+    if (missing == null) {
+      return "Group Slot Locked: illegal loadout — missing slot token claim.";
+    }
+    int mainHandId = state.getEquippedItemId(SlotType.MAIN_HAND);
+    int offHandId = state.getEquippedItemId(SlotType.OFF_HAND);
+    if (missing == SlotType.OFF_HAND && mainHandId > 0 && mainHandId == offHandId) {
+      return "Group Slot Locked: illegal loadout — two-handed weapon requires both the "
+          + displayService.getDisplayName(SlotType.MAIN_HAND)
+          + " and "
+          + displayService.getDisplayName(SlotType.OFF_HAND)
+          + " tokens; missing the "
+          + displayService.getDisplayName(SlotType.OFF_HAND)
+          + " token.";
+    }
+    return "Group Slot Locked: illegal loadout — missing the "
+        + displayService.getDisplayName(missing)
+        + " slot token.";
   }
 
   private void queueMessage(String message) {

@@ -19,7 +19,6 @@ Tracked ideas and follow-up work. Not yet implemented unless marked done.
 ## Backlog (add items here)
 
 <!-- Future todos go below -->
-- [ ] bug: two handed weapons and bows should require the weapon and off-hand tokens. there should be an extra text message which describes what's wrong with this.
 - [ ] update the plugin settings page. I don't like some of the names.
 - [ ] remove plugin sidebar "slot overlay" tab now that it's implemented in the worn items page
 - [ ] add the ticks and crosses to the normal worn equipment page not just the full menu one.

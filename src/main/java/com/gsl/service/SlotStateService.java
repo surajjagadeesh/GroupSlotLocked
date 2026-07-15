@@ -48,6 +48,7 @@ public class SlotStateService {
 
   private final Client client;
   private final ItemManager itemManager;
+  private final SlotValidator slotValidator;
   private final ConfigManager configManager;
   private final Gson gson;
   @Getter private volatile LocalSlotState state = LocalSlotState.empty();
@@ -59,9 +60,14 @@ public class SlotStateService {
 
   @Inject
   SlotStateService(
-      Client client, ItemManager itemManager, ConfigManager configManager, Gson gson) {
+      Client client,
+      ItemManager itemManager,
+      SlotValidator slotValidator,
+      ConfigManager configManager,
+      Gson gson) {
     this.client = client;
     this.itemManager = itemManager;
+    this.slotValidator = slotValidator;
     this.configManager = configManager;
     this.gson = gson;
     loadLocalSnapshotFile();
@@ -114,9 +120,19 @@ public class SlotStateService {
     if (worn != null) {
       for (SlotType slot : SlotType.values()) {
         Item item = worn.getItem(slot.getEquipmentSlot().getSlotIdx());
-        if (item != null && item.getId() > 0) {
-          equippedSlots.add(slot);
-          equippedItemIds.put(slot, itemManager.canonicalize(item.getId()));
+        if (item == null || item.getId() <= 0) {
+          continue;
+        }
+        int canonicalId = itemManager.canonicalize(item.getId());
+        equippedSlots.add(slot);
+        equippedItemIds.put(slot, canonicalId);
+        if (slot == SlotType.MAIN_HAND
+            && slotValidator.slotsForItem(canonicalId).contains(SlotType.OFF_HAND)) {
+          // Two-handed weapons block the shield slot without occupying it, so WORN never
+          // reports an item there. Treat off-hand as in-use so claim/equip-count checks
+          // still catch it.
+          equippedSlots.add(SlotType.OFF_HAND);
+          equippedItemIds.putIfAbsent(SlotType.OFF_HAND, canonicalId);
         }
       }
     }

@@ -8,6 +8,7 @@ import com.gsl.model.Violation;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -77,16 +78,23 @@ public class SlotValidator {
     if (state.getEquippedSlots().size() > config.maxEquipped()) {
       violations.add(Violation.OVER_EQUIP_LIMIT);
     }
-    for (SlotType equipped : state.getEquippedSlots()) {
-      if (!hasActiveClaim(state, equipped)) {
-        violations.add(Violation.NO_SLOT_CLAIM);
-        break;
-      }
+    if (findMissingClaimSlot(state).isPresent()) {
+      violations.add(Violation.NO_SLOT_CLAIM);
     }
     if (!violations.isEmpty() && !state.getEquippedSlots().isEmpty()) {
       violations.add(Violation.CURRENTLY_ILLEGAL);
     }
     return violations;
+  }
+
+  /** First currently-equipped slot without an active token claim, if any. */
+  public Optional<SlotType> findMissingClaimSlot(LocalSlotState state) {
+    for (SlotType equipped : state.getEquippedSlots()) {
+      if (!hasActiveClaim(state, equipped)) {
+        return Optional.of(equipped);
+      }
+    }
+    return Optional.empty();
   }
 
   public boolean isLoadoutIllegal(LocalSlotState state) {

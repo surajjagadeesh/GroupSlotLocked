@@ -160,7 +160,7 @@ Each slot has a **dedicated token item**. If the token exists in the player's **
 
 This matches how teams typically hand off slot tokens: deposit into group storage → teammate withdraws to bank/inventory → claim becomes active.
 
-### Recommended tokens: Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 7
+### Recommended tokens: Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 2
 
 Cheap, tradable, visually distinct, easy to obtain. Use `net.runelite.api.gameval.ItemID` (`WILDERNESS_CAPE_N` aliases):
 
@@ -176,7 +176,7 @@ Cheap, tradable, visually distinct, easy to obtain. Use `net.runelite.api.gameva
 | OFF_HAND | `WILDERNESS_CAPE_30` | Team-30 cape |
 | BOOTS | `WILDERNESS_CAPE_40` | Team-40 cape |
 | RING | `WILDERNESS_CAPE_50` | Team-50 cape |
-| GLOVES | `WILDERNESS_CAPE_7` | Team-7 cape |
+| GLOVES | `WILDERNESS_CAPE_2` | Team-2 cape |
 
 > **Note:** Using capes for non-cape slots is intentional — they're dummy claim markers, not literal slot types. Document this for players (sidebar panel or config description).
 
@@ -526,7 +526,7 @@ Reference: core **Menu Entry Swapper** plugin patterns (`MenuEntryAdded`, `MenuO
 
 | Tier | Items | Behavior | Config |
 |------|-------|----------|--------|
-| **Static (token items)** | Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 7 (`SlotType.tokenItemId()`) | **Always** deprioritize Wear/Wield; promote **Examine** as left-click with slot-specific menu text | On by default |
+| **Static (token items)** | Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 2 (`SlotType.tokenItemId()`) | **Always** deprioritize Wear/Wield; promote **Examine** as left-click with slot-specific menu text | On by default |
 | **Dynamic (illegal gear)** | Any item where `canEquipItem(itemId) != NONE` | Deprioritize Wear/Wield/Wear while rules block equipping | On by default |
 
 Token items are claim markers — players should not accidentally **wear** them. Illegal gear covers everything else the validator rejects (no claim, slot taken, over 5 limit).
@@ -694,7 +694,7 @@ Ship these defaults — teams can rename via overrides without code changes:
 | `OFF_HAND` | Off hand | OH | Team-30 cape |
 | `BOOTS` | Boots | Bo | Team-40 cape |
 | `RING` | Ring | Ri | Team-50 cape |
-| `GLOVES` | Gloves | Gl | Team-7 cape |
+| `GLOVES` | Gloves | Gl | Team-2 cape |
 
 Derived strings (use display name, not enum name):
 
@@ -761,7 +761,7 @@ public class SlotDisplayService {
 
 ### Custom slot icons
 
-Each of the 11 slot claim tokens (Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 7) can have a **custom icon** shown in the sidebar panel, overlays, and token-item highlights. Icons help players quickly recognize which cape grants which slot without memorizing numbers.
+Each of the 11 slot claim tokens (Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 2) can have a **custom icon** shown in the sidebar panel, overlays, and token-item highlights. Icons help players quickly recognize which cape grants which slot without memorizing numbers.
 
 ### Goals
 
@@ -797,7 +797,7 @@ String label = slotDisplayService.getDisplayName(SlotType.HEAD);
 | OFF_HAND | Team-30 cape | `off_hand.png` | `icons/slots/off_hand.png` |
 | BOOTS | Team-40 cape | `boots.png` | `icons/slots/boots.png` |
 | RING | Team-50 cape | `ring.png` | `icons/slots/ring.png` |
-| GLOVES | Team-7 cape | `gloves.png` | `icons/slots/gloves.png` |
+| GLOVES | Team-2 cape | `gloves.png` | `icons/slots/gloves.png` |
 
 **User override directory** (per AGENTS.md — only write inside `.runelite`):
 
@@ -898,7 +898,7 @@ Apply status tinting **on top of** the icon (green/red/yellow border or overlay)
 Ship lightweight defaults in repo (optimize PNGs before commit):
 
 - Option A: Simple monochrome slot silhouettes (helmet, cape, amulet, etc.)
-- Option B: Downscaled team cape colors (6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 7) with slot label
+- Option B: Downscaled team cape colors (6, 16, 26, 36, 46, 10, 20, 30, 40, 50, 2) with slot label
 - Option C: No bundled files — rely on `ItemManager` token sprite until user imports
 
 Recommend **Option A or B** so the panel looks intentional before customization.
@@ -1116,7 +1116,7 @@ Per `AGENTS.md`: **agents cannot play the game for you.** Automated tests cover 
 
 ### Setup — test items
 
-Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, and 7 are **tradable** — obtain via:
+Team capes 6, 16, 26, 36, 46, 10, 20, 30, 40, 50, and 2 are **tradable** — obtain via:
 
 - **Grand Exchange** on a non-restricted account, trade to test character, **or**
 - **Group ironman:** buy from other players / team stockpile, **or**
