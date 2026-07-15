@@ -22,6 +22,7 @@ Tracked ideas and follow-up work. Not yet implemented unless marked done.
 - [ ] add an info box in the plugin settings that says which capes correspond to which slot token items. Also which guy sells them.
 - [ ] possibly add the ability to customize which capes are used for tokens so players don't have to get exactly the ones we call for.
 - [ ] update the plugin settings page
-- [ ] add a little overlay on the worn items page which makes it easy to see if that slot can be used with the tokens the player currently holds. Remove the side page tab.
 - [ ] bug: two handed weapons and bows should require the weapon and off-hand tokens. there should be an extra text message which describes what's wrong with this.
 - [ ] update names from "X slot" to "X slot token"
+- [ ] bug: replace token items menu item should also reset the team cape sprites from being the scaperune teleport tablets
+- [ ] remove enable plugin option (the default slider will do)

@@ -64,6 +64,14 @@ public interface GroupSlotLockedConfig extends Config {
   }
 
   @ConfigItem(
+      keyName = "showEquipmentClaimIndicators",
+      name = "Equipment claim indicators",
+      description = "Show a check/cross badge on each Worn Equipment tab slot for token claim status")
+  default boolean showEquipmentClaimIndicators() {
+    return true;
+  }
+
+  @ConfigItem(
       keyName = "bankRefreshInterval",
       name = "Bank refresh interval",
       description = "Game ticks between bank rescans when the bank container is loaded")

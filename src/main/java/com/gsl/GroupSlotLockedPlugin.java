@@ -3,6 +3,7 @@ package com.gsl;
 import com.google.inject.Provides;
 import com.gsl.menu.SlotMenuHandler;
 import com.gsl.menu.TokenBankSearchHandler;
+import com.gsl.overlay.EquipmentTokenClaimOverlay;
 import com.gsl.overlay.ItemRestrictionOverlay;
 import com.gsl.overlay.TokenBankDragOverlay;
 import com.gsl.overlay.TokenInventoryDragOverlay;
@@ -60,6 +61,7 @@ public class GroupSlotLockedPlugin extends Plugin {
   @Inject private TokenItemDragOverlay tokenItemDragOverlay;
   @Inject private TokenTooltipOverlay tokenTooltipOverlay;
   @Inject private ViolationOverlay violationOverlay;
+  @Inject private EquipmentTokenClaimOverlay equipmentTokenClaimOverlay;
   @Inject private GroupSlotLockedPanel panel;
   @Inject private OverlayManager overlayManager;
   @Inject private ClientToolbar clientToolbar;
@@ -96,6 +98,7 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.add(tokenItemDragOverlay);
     overlayManager.add(tokenTooltipOverlay);
     overlayManager.add(violationOverlay);
+    overlayManager.add(equipmentTokenClaimOverlay);
     eventBus.register(slotMenuHandler);
     eventBus.register(tokenBankSearchHandler);
     eventBus.register(tokenModelOverrideService);
@@ -119,6 +122,7 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.remove(tokenItemDragOverlay);
     overlayManager.remove(tokenTooltipOverlay);
     overlayManager.remove(violationOverlay);
+    overlayManager.remove(equipmentTokenClaimOverlay);
     eventBus.unregister(slotMenuHandler);
     eventBus.unregister(tokenBankSearchHandler);
     eventBus.unregister(tokenModelOverrideService);
