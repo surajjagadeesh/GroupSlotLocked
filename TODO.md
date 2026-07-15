@@ -19,4 +19,3 @@ Tracked ideas and follow-up work. Not yet implemented unless marked done.
 ## Backlog (add items here)
 
 <!-- Future todos go below -->
-- [ ] setInventoryModel for the team capes to be some unused teleport tablet such as the "deadman teleport" so that if the model ever comes above our overlay it at least doesn't come up as a team cape.
