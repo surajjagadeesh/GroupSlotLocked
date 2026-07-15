@@ -19,7 +19,4 @@ Tracked ideas and follow-up work. Not yet implemented unless marked done.
 ## Backlog (add items here)
 
 <!-- Future todos go below -->
-- [ ] update the plugin settings page. I don't like some of the names.
-- [ ] add the ticks and crosses to the normal worn equipment page not just the full menu one.
-- [ ] update names from "X slot" to "X slot token"
 - [ ] possibly add the ability to customize which capes are used for tokens so players don't have to get exactly the ones we call for. this should be under an advanced tab. if not configurable, then just add an info box in the plugin settings that says which capes correspond to which slot token items. Also which guy sells them.
