@@ -34,20 +34,25 @@ public class ViolationNotifier {
   }
 
   public void onStateChanged(LocalSlotState state) {
+    // Only treat the loadout as "illegal" (for chat purposes) when something is actually
+    // equipped illegally — TOO_MANY_TOKENS alone (e.g. holding an extra token with nothing
+    // worn) is already fully covered by the over-cap message below, and would otherwise fire
+    // both every time.
+    boolean illegal =
+        slotValidator.getCurrentViolations(state).contains(Violation.CURRENTLY_ILLEGAL);
+    boolean overTokenCap = state.getHeldTokenCount() > config.maxHeldTokens();
     if (!config.chatWarnings()) {
-      wasIllegal = slotValidator.isLoadoutIllegal(state);
-      wasOverTokenCap = state.getHeldTokenCount() > config.maxHeldTokens();
+      wasIllegal = illegal;
+      wasOverTokenCap = overTokenCap;
       return;
     }
-    boolean illegal = slotValidator.isLoadoutIllegal(state);
-    boolean overTokenCap = state.getHeldTokenCount() > config.maxHeldTokens();
     if (overTokenCap && !wasOverTokenCap) {
       queueMessage(
-          "Group Slot Locked: "
+          "You're holding "
               + state.getHeldTokenCount()
-              + "/"
+              + " slot tokens, but you can only hold "
               + config.maxHeldTokens()
-              + " tokens held — store one in group storage.");
+              + ". Store one in group storage.");
     }
     if (illegal && !wasIllegal) {
       queueMessage(buildIllegalMessage(state));
@@ -65,37 +70,37 @@ public class ViolationNotifier {
     for (Violation violation : slotValidator.getCurrentViolations(state)) {
       switch (violation) {
         case TOO_MANY_TOKENS:
-          return "Group Slot Locked: illegal loadout — too many tokens held.";
+          return "You're holding too many slot tokens.";
         case OVER_EQUIP_LIMIT:
-          return "Group Slot Locked: illegal loadout — too many equipment slots filled.";
+          return "You have too many items equipped.";
         case NO_SLOT_CLAIM:
           return buildMissingClaimMessage(state);
         default:
           break;
       }
     }
-    return "Group Slot Locked: illegal loadout — unequip restricted gear.";
+    return "You're wearing illegal equipment. Unequip the restricted gear.";
   }
 
   private String buildMissingClaimMessage(LocalSlotState state) {
     SlotType missing = slotValidator.findMissingClaimSlot(state).orElse(null);
     if (missing == null) {
-      return "Group Slot Locked: illegal loadout — missing a slot token.";
+      return "You're wearing illegal equipment because you're missing a slot token.";
     }
     int mainHandId = state.getEquippedItemId(SlotType.MAIN_HAND);
     int offHandId = state.getEquippedItemId(SlotType.OFF_HAND);
     if (missing == SlotType.OFF_HAND && mainHandId > 0 && mainHandId == offHandId) {
-      return "Group Slot Locked: illegal loadout — two-handed weapon requires both the "
-          + displayService.getDisplayName(SlotType.MAIN_HAND)
+      return "Your two-handed weapon needs both the "
+          + displayService.getDisplayName(SlotType.MAIN_HAND).toLowerCase()
           + " and "
-          + displayService.getDisplayName(SlotType.OFF_HAND)
-          + " tokens; missing the "
-          + displayService.getDisplayName(SlotType.OFF_HAND)
+          + displayService.getDisplayName(SlotType.OFF_HAND).toLowerCase()
+          + " slot tokens. You're missing the "
+          + displayService.getDisplayName(SlotType.OFF_HAND).toLowerCase()
           + " token.";
     }
-    return "Group Slot Locked: illegal loadout — missing the "
-        + displayService.getDisplayName(missing)
-        + " slot token.";
+    return "You cannot equip anything in the "
+        + displayService.getDisplayName(missing).toLowerCase()
+        + " slot without the slot token.";
   }
 
   private void queueMessage(String message) {

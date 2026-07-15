@@ -111,7 +111,9 @@ public class SlotStateService {
         resolveInventoryTokens(client.getItemContainer(InventoryID.INV));
     heldTokenCount += inventoryTotals.count;
     tokensPresent.addAll(inventoryTotals.slots);
-    TokenTotals bankTotals = resolveBankTokens(client.getItemContainer(InventoryID.BANK));
+    // Bank is scanned separately on a throttled interval (see refreshBankIfAvailable); reuse the
+    // last known snapshot here instead of rescanning the whole bank every tick.
+    TokenTotals bankTotals = lastKnownBankTotals();
     heldTokenCount += bankTotals.count;
     tokensPresent.addAll(bankTotals.slots);
     EnumSet<SlotType> equippedSlots = EnumSet.noneOf(SlotType.class);
@@ -198,7 +200,7 @@ public class SlotStateService {
 
   private TokenTotals resolveBankTokens(ItemContainer bank) {
     if (bank == null) {
-      return TokenTotals.from(lastKnownBankTokens, lastKnownBankTokenCount);
+      return lastKnownBankTotals();
     }
     EnumSet<SlotType> scanned = EnumSet.noneOf(SlotType.class);
     int scannedCount = collectTokens(bank, scanned);
@@ -206,6 +208,10 @@ public class SlotStateService {
       captureBankSnapshot(scanned, scannedCount);
       return TokenTotals.from(scanned, scannedCount);
     }
+    return lastKnownBankTotals();
+  }
+
+  private TokenTotals lastKnownBankTotals() {
     return TokenTotals.from(lastKnownBankTokens, lastKnownBankTokenCount);
   }
 
@@ -222,12 +228,19 @@ public class SlotStateService {
   }
 
   private void captureInventorySnapshot(EnumSet<SlotType> inventoryTokens, int inventoryCount) {
+    if (inventoryTokens.equals(lastKnownInventoryTokens)
+        && inventoryCount == lastKnownInventoryTokenCount) {
+      return;
+    }
     lastKnownInventoryTokens = EnumSet.copyOf(inventoryTokens);
     lastKnownInventoryTokenCount = inventoryCount;
     persistSnapshots();
   }
 
   private void captureBankSnapshot(EnumSet<SlotType> bankTokens, int bankCount) {
+    if (bankTokens.equals(lastKnownBankTokens) && bankCount == lastKnownBankTokenCount) {
+      return;
+    }
     lastKnownBankTokens = EnumSet.copyOf(bankTokens);
     lastKnownBankTokenCount = bankCount;
     persistSnapshots();

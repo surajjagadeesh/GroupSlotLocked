@@ -14,7 +14,7 @@ public enum SlotType {
   HEAD(EquipmentInventorySlot.HEAD, ItemID.WILDERNESS_CAPE_6, "Head", "H"),
   CAPE(EquipmentInventorySlot.CAPE, ItemID.WILDERNESS_CAPE_16, "Cape", "C"),
   NECK(EquipmentInventorySlot.AMULET, ItemID.WILDERNESS_CAPE_26, "Neck", "N"),
-  AMMO(EquipmentInventorySlot.AMMO, ItemID.WILDERNESS_CAPE_36, "Ammo", "A"),
+  AMMO(EquipmentInventorySlot.AMMO, ItemID.WILDERNESS_CAPE_36, "Ammunition", "A"),
   BODY(EquipmentInventorySlot.BODY, ItemID.WILDERNESS_CAPE_46, "Body", "B"),
   LEGS(EquipmentInventorySlot.LEGS, ItemID.WILDERNESS_CAPE_10, "Legs", "L"),
   MAIN_HAND(EquipmentInventorySlot.WEAPON, ItemID.WILDERNESS_CAPE_20, "Main hand", "MH"),
