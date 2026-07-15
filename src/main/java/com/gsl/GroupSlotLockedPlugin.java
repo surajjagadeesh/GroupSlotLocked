@@ -29,6 +29,7 @@ import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.ConfigSync;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.eventbus.EventBus;
@@ -107,7 +108,9 @@ public class GroupSlotLockedPlugin extends Plugin {
         () -> {
           slotStateService.refreshAll();
           violationNotifier.onStateChanged(slotStateService.getState());
-          tokenModelOverrideService.warmUp();
+          if (config.replaceTokenIcons()) {
+            tokenModelOverrideService.warmUp();
+          }
         });
     log.info("Group Slot Locked started");
   }
@@ -163,6 +166,21 @@ public class GroupSlotLockedPlugin extends Plugin {
         || event.getScriptId() == ScriptID.GROUP_IRONMAN_STORAGE_BUILD) {
       slotStateService.refreshAll();
     }
+  }
+
+  @Subscribe
+  public void onConfigChanged(ConfigChanged event) {
+    if (!"group-slot-locked".equals(event.getGroup()) || !"showTokenBadge".equals(event.getKey())) {
+      return;
+    }
+    clientThread.invoke(
+        () -> {
+          if (config.replaceTokenIcons()) {
+            tokenModelOverrideService.warmUp();
+          } else {
+            tokenModelOverrideService.restore();
+          }
+        });
   }
 
   @Subscribe
