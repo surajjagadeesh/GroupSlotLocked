@@ -11,6 +11,7 @@ import com.gsl.util.TokenDragIconRenderer;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
@@ -73,10 +74,10 @@ public class ItemRestrictionOverlay extends WidgetItemOverlay {
     if (violation == Violation.NONE) {
       return;
     }
-    final Color fill = new Color(255, 0, 0, 100);
-    graphics.setColor(fill);
-    graphics.fill(bounds);
-    graphics.setColor(Color.RED);
-    graphics.draw(bounds);
+    BufferedImage outline = itemManager.getItemOutline(itemId, widgetItem.getQuantity(), Color.RED);
+    if (outline == null) {
+      return;
+    }
+    graphics.drawImage(outline, (int) bounds.getX(), (int) bounds.getY(), null);
   }
 }
