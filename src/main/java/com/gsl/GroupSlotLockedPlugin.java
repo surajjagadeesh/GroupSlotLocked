@@ -12,6 +12,7 @@ import com.gsl.overlay.TokenTooltipOverlay;
 import com.gsl.overlay.ViolationOverlay;
 import com.gsl.service.SlotDisplayService;
 import com.gsl.service.SlotStateService;
+import com.gsl.service.TokenModelOverrideService;
 import com.gsl.service.ViolationNotifier;
 import com.gsl.ui.GroupSlotLockedPanel;
 import java.awt.image.BufferedImage;
@@ -48,6 +49,7 @@ public class GroupSlotLockedPlugin extends Plugin {
   @Inject private Client client;
   @Inject private SlotStateService slotStateService;
   @Inject private SlotDisplayService displayService;
+  @Inject private TokenModelOverrideService tokenModelOverrideService;
   @Inject private ViolationNotifier violationNotifier;
   @Inject private SlotMenuHandler slotMenuHandler;
   @Inject private TokenBankSearchHandler tokenBankSearchHandler;
@@ -96,11 +98,13 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.add(violationOverlay);
     eventBus.register(slotMenuHandler);
     eventBus.register(tokenBankSearchHandler);
+    eventBus.register(tokenModelOverrideService);
     slotStateService.addListener(violationNotifier::onStateChanged);
     clientThread.invoke(
         () -> {
           slotStateService.refreshAll();
           violationNotifier.onStateChanged(slotStateService.getState());
+          tokenModelOverrideService.warmUp();
         });
     log.info("Group Slot Locked started");
   }
@@ -117,8 +121,10 @@ public class GroupSlotLockedPlugin extends Plugin {
     overlayManager.remove(violationOverlay);
     eventBus.unregister(slotMenuHandler);
     eventBus.unregister(tokenBankSearchHandler);
+    eventBus.unregister(tokenModelOverrideService);
     slotStateService.removeListener(violationNotifier::onStateChanged);
     violationNotifier.reset();
+    clientThread.invoke(tokenModelOverrideService::restore);
     log.debug("Group Slot Locked stopped");
   }
 
