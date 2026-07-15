@@ -56,22 +56,6 @@ public interface GroupSlotLockedConfig extends Config {
   }
 
   @ConfigItem(
-      keyName = "deprioritizeIllegalEquips",
-      name = "Deprioritize illegal equips",
-      description = "Move Wear/Wield below other options on gear that fails validation")
-  default boolean deprioritizeIllegalEquips() {
-    return true;
-  }
-
-  @ConfigItem(
-      keyName = "blockIllegalEquips",
-      name = "Block illegal equips",
-      description = "Consume Wear/Wield clicks on token items and illegal gear (backup)")
-  default boolean blockIllegalEquips() {
-    return false;
-  }
-
-  @ConfigItem(
       keyName = "showTokenBadge",
       name = "Replace token icons",
       description = "Replace team cape sprites with slot icons in inventory, bank, and equipment")

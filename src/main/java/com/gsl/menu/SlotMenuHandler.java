@@ -2,10 +2,7 @@ package com.gsl.menu;
 
 import com.gsl.GroupSlotLockedConfig;
 import com.gsl.model.SlotType;
-import com.gsl.model.Violation;
 import com.gsl.service.SlotDisplayService;
-import com.gsl.service.SlotStateService;
-import com.gsl.service.SlotValidator;
 import com.gsl.util.BankItemUtils;
 import com.gsl.util.TokenItemWidgetScopes;
 import java.util.Locale;
@@ -46,8 +43,6 @@ public class SlotMenuHandler {
   private final Client client;
   private final GroupSlotLockedConfig config;
   private final SlotDisplayService displayService;
-  private final SlotStateService slotStateService;
-  private final SlotValidator slotValidator;
   private final ChatMessageManager chatMessageManager;
   private final ItemManager itemManager;
 
@@ -56,15 +51,11 @@ public class SlotMenuHandler {
       Client client,
       GroupSlotLockedConfig config,
       SlotDisplayService displayService,
-      SlotStateService slotStateService,
-      SlotValidator slotValidator,
       ChatMessageManager chatMessageManager,
       ItemManager itemManager) {
     this.client = client;
     this.config = config;
     this.displayService = displayService;
-    this.slotStateService = slotStateService;
-    this.slotValidator = slotValidator;
     this.chatMessageManager = chatMessageManager;
     this.itemManager = itemManager;
   }
@@ -84,13 +75,6 @@ public class SlotMenuHandler {
     }
     if (resolveTokenSlot(itemId) != null) {
       handleTokenEntry(entry, itemId);
-      return;
-    }
-    if (config.deprioritizeIllegalEquips()
-        && isEquipOption(entry.getOption())
-        && slotValidator.getViolationForItem(slotStateService.getState(), itemId)
-            != Violation.NONE) {
-      entry.setDeprioritized(true);
     }
   }
 
@@ -108,17 +92,7 @@ public class SlotMenuHandler {
         continue;
       }
       SlotType slot = resolveTokenSlot(itemId);
-      if (slot != null) {
-        if (handleTokenMenuOpenedEntry(entry, entries, i, slot)) {
-          changed = true;
-        }
-        continue;
-      }
-      if (config.deprioritizeIllegalEquips()
-          && isEquipOption(entry.getOption())
-          && slotValidator.getViolationForItem(slotStateService.getState(), itemId)
-              != Violation.NONE) {
-        entry.setDeprioritized(true);
+      if (slot != null && handleTokenMenuOpenedEntry(entry, entries, i, slot)) {
         changed = true;
       }
     }
@@ -171,15 +145,6 @@ public class SlotMenuHandler {
               .type(ChatMessageType.GAMEMESSAGE)
               .runeLiteFormattedMessage(displayService.getTokenExamineChatMessage(slot))
               .build());
-      return;
-    }
-    if (!config.blockIllegalEquips() || !isEquipOption(event.getMenuOption())) {
-      return;
-    }
-    if (resolveTokenSlot(itemId) != null
-        || slotValidator.getViolationForItem(slotStateService.getState(), itemId)
-            != Violation.NONE) {
-      event.consume();
     }
   }
 
