@@ -5,8 +5,6 @@ import com.gsl.service.SlotStateService;
 import com.gsl.service.SlotValidator;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import javax.inject.Inject;
@@ -20,7 +18,6 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 public class ViolationOverlay extends Overlay {
-  private static final String MESSAGE = "Illegal loadout — unequip restricted gear";
   private static final int SHARED_BANK_ITEMS =
       WidgetUtil.packComponentId(InterfaceID.SHARED_BANK, 2);
   private final Client client;
@@ -57,12 +54,6 @@ public class ViolationOverlay extends Overlay {
     cutOutWidget(graphics, InterfaceID.EquipmentSide.ITEMS);
     cutOutWidget(graphics, InterfaceID.Bankmain.ITEMS);
     cutOutWidget(graphics, SHARED_BANK_ITEMS);
-    graphics.setColor(Color.WHITE);
-    graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
-    FontMetrics metrics = graphics.getFontMetrics();
-    int x = (canvas.width - metrics.stringWidth(MESSAGE)) / 2;
-    int y = canvas.height / 2;
-    graphics.drawString(MESSAGE, x, y);
     return canvas.getSize();
   }
 

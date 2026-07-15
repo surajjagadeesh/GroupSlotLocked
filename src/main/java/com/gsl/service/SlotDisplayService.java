@@ -200,9 +200,7 @@ public class SlotDisplayService {
   }
 
   public String getTokenExamineChatMessage(SlotType slot) {
-    return "Group Slot Locked: this token grants the <col=ff9040>"
-        + getDisplayName(slot)
-        + "</col> equipment slot.";
+    return "Allows for use of the " + getDisplayName(slot).toLowerCase() + " equipment slot.";
   }
 
   public BufferedImage getIcon(SlotType slot) {

@@ -3,11 +3,13 @@ package com.gsl.service;
 import com.gsl.GroupSlotLockedConfig;
 import com.gsl.model.LocalSlotState;
 import com.gsl.model.Violation;
+import java.awt.Color;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.ChatMessageType;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
+import net.runelite.client.util.ColorUtil;
 
 @Singleton
 public class ViolationNotifier {
@@ -75,7 +77,7 @@ public class ViolationNotifier {
     chatMessageManager.queue(
         QueuedMessage.builder()
             .type(ChatMessageType.GAMEMESSAGE)
-            .runeLiteFormattedMessage(message)
+            .runeLiteFormattedMessage(ColorUtil.wrapWithColorTag(message, Color.RED))
             .build());
   }
 }
