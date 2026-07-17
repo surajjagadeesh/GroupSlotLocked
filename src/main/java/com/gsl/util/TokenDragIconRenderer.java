@@ -41,6 +41,7 @@ public final class TokenDragIconRenderer {
     InterfaceID.Bankmain.ITEMS,
     InterfaceID.Bankmain.BANKTAGS_DISPLAY_ITEMS,
     InterfaceID.SharedBank.ITEMS,
+    InterfaceID.Bankmain.TABS,
   };
   private static final int[] INVENTORY_ITEM_CONTAINERS = {
     InterfaceID.Inventory.ITEMS,
@@ -651,6 +652,48 @@ public final class TokenDragIconRenderer {
       clearDragGrabOffset();
     }
     renderBankDragLayerIcons(graphics, client, itemManager, displayService);
+    renderActiveBankMainDragGhost(graphics, client, itemManager, displayService);
+  }
+
+  /**
+   * {@link TokenBankDragOverlay}'s ghost draws via {@code drawAfterInterface}, which some bank
+   * chrome (e.g. the tab header bar) still paints over while the drag crosses into it — the raw
+   * client drag sprite renders later than that and shows through. Redraw the ghost here too, on
+   * {@link net.runelite.client.ui.overlay.OverlayLayer#ALWAYS_ON_TOP}, so there's always a pass
+   * that's guaranteed to land after everything else. Harmless to double-draw over the grid, where
+   * the drawAfterInterface pass already renders it correctly.
+   */
+  private static void renderActiveBankMainDragGhost(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService) {
+    Widget dragged = client.getDraggedWidget();
+    if (dragged == null || !isBankMainDragSource(dragged)) {
+      return;
+    }
+    HeldItemDetails held = resolveHeldItemDetails(client, itemManager, dragged);
+    if (held == null) {
+      return;
+    }
+    SlotType slot = slotFromItemId(itemManager, held.itemId);
+    if (slot == null) {
+      return;
+    }
+    Widget heldSlot = resolveDraggedSlotWidget(client);
+    Rectangle dragBounds = resolveActiveDragBounds(client, heldSlot != null ? heldSlot : dragged);
+    if (dragBounds == null) {
+      return;
+    }
+    drawTokenIcon(
+        graphics,
+        itemManager,
+        displayService,
+        slot,
+        dragBounds,
+        held.itemId,
+        held.quantity,
+        TokenIconRenderContext.DRAG_AT_CURSOR);
   }
 
   public static boolean renderBankDragLayerIcons(

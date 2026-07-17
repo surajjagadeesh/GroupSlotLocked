@@ -18,7 +18,7 @@ Tracked ideas and follow-up work. Not yet implemented unless marked done.
 
 ## Known bugs (from repo scan)
 
-- [ ] **cleanup: dead code in TokenDragIconRenderer** — `resolveActiveDragBounds` (private) plus public `renderInventoryDragWidgetItemIcon`, `renderBankDragWidgetItemIcon`, `isItemBeingDragged`, `renderPressedInventoryItemIcon`, `renderPressedBankItemIcon` have zero callers anywhere in the codebase.
+- [ ] **cleanup: dead code in TokenDragIconRenderer** — public `renderInventoryDragWidgetItemIcon`, `renderBankDragWidgetItemIcon`, `isItemBeingDragged`, `renderPressedInventoryItemIcon`, `renderPressedBankItemIcon` have zero callers anywhere in the codebase. (`resolveActiveDragBounds` no longer applies — it's now used by `renderActiveBankMainDragGhost`.)
 - [ ] **cleanup: stale static drag state not reset across plugin disable/enable** — `TokenDragIconRenderer` keeps drag-tracking state (`dragGrabOffset`, hold anchors, `dragHandoffReady`) in `private static` fields with no reset hook called from `GroupSlotLockedPlugin.shutDown()`/`startUp()`. Mostly self-correcting, but could cause a stale visual glitch on the first drag right after re-enabling the plugin.
 - [ ] **bug (unconfirmed): red highlight doesn't cover the dedicated Worn Equipment tab** — `ItemRestrictionOverlay` only hooks `EquipmentSide.ITEMS` (the compact side panel), not the full `Equipment.SLOT0..13` widgets used by the dedicated Equipment tab, so illegally-worn gear shows no red highlight there (only the check/cross badges from `EquipmentTokenClaimOverlay`). May be an intentional pre-existing scope decision rather than a bug — needs a decision.
 
