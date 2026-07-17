@@ -111,11 +111,13 @@ public class GroupSlotLockedPlugin extends Plugin {
 
   @Subscribe
   public void onGameTick(GameTick tick) {
-    slotStateService.refreshInventoryAndWorn();
+    // Bank before inventory: refreshInventoryAndWorn() reuses the cached bank snapshot rather
+    // than rescanning, so refresh that cache first on ticks where it's due.
     int interval = Math.max(1, config.bankRefreshInterval());
     if (client.getTickCount() % interval == 0) {
       slotStateService.refreshBankIfAvailable();
     }
+    slotStateService.refreshInventoryAndWorn();
     slotStateService.refreshGroupStorage();
   }
 

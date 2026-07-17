@@ -99,8 +99,12 @@ public class SlotStateService {
   }
 
   public void refreshAll() {
-    refreshInventoryAndWorn();
+    // Bank first: refreshInventoryAndWorn() reuses the cached bank snapshot rather than
+    // rescanning (see below), so refresh that cache before consuming it — otherwise moving a
+    // token between bank and inventory can transiently double- or under-count it and trip a
+    // bogus token-cap warning until the next refresh corrects it.
     refreshBankIfAvailable();
+    refreshInventoryAndWorn();
     refreshGroupStorage();
   }
 
