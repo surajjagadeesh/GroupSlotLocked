@@ -34,6 +34,7 @@ public class TokenInventoryDragOverlay extends WidgetItemOverlay {
     drawAfterInterface(InterfaceID.INVENTORY);
     drawAfterInterface(InterfaceID.BANKSIDE);
     drawAfterInterface(InterfaceID.SHARED_BANK_SIDE);
+    drawAfterInterface(InterfaceID.TRADESIDE);
   }
 
   @Override

@@ -51,6 +51,9 @@ public class ItemRestrictionOverlay extends WidgetItemOverlay {
     drawAfterLayer(InterfaceID.EquipmentSide.ITEMS);
     drawAfterLayer(InterfaceID.SharedBank.ITEMS);
     drawAfterLayer(InterfaceID.SharedBankSide.ITEMS);
+    drawAfterLayer(InterfaceID.Tradeside.SIDE_LAYER);
+    drawAfterLayer(InterfaceID.Trademain.YOUR_OFFER);
+    drawAfterLayer(InterfaceID.Trademain.OTHER_OFFER);
   }
 
   @Override

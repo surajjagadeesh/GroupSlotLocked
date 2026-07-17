@@ -43,12 +43,14 @@ public class TokenPressHoldOverlay extends Overlay {
     drawAfterInterface(InterfaceID.SHARED_BANK_SIDE);
     drawAfterInterface(InterfaceID.BANKMAIN);
     drawAfterInterface(InterfaceID.SHARED_BANK);
+    drawAfterInterface(InterfaceID.TRADESIDE);
     drawAfterLayer(InterfaceID.Inventory.ITEMS);
     drawAfterLayer(InterfaceID.Bankside.ITEMS);
     drawAfterLayer(InterfaceID.SharedBankSide.ITEMS);
     drawAfterLayer(InterfaceID.Bankmain.ITEMS);
     drawAfterLayer(InterfaceID.Bankmain.BANKTAGS_DISPLAY_ITEMS);
     drawAfterLayer(InterfaceID.SharedBank.ITEMS);
+    drawAfterLayer(InterfaceID.Tradeside.SIDE_LAYER);
   }
 
   @Override

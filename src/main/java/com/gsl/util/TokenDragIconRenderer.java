@@ -46,6 +46,7 @@ public final class TokenDragIconRenderer {
     InterfaceID.Inventory.ITEMS,
     InterfaceID.Bankside.ITEMS,
     InterfaceID.SharedBankSide.ITEMS,
+    InterfaceID.Tradeside.SIDE_LAYER,
   };
 
   private TokenDragIconRenderer() {}
@@ -447,7 +448,9 @@ public final class TokenDragIconRenderer {
 
   @Nullable
   private static ItemContainer containerForDragWidget(Client client, int widgetId) {
-    if (widgetId == InterfaceID.Inventory.ITEMS || widgetId == InterfaceID.Bankside.ITEMS) {
+    if (widgetId == InterfaceID.Inventory.ITEMS
+        || widgetId == InterfaceID.Bankside.ITEMS
+        || widgetId == InterfaceID.Tradeside.SIDE_LAYER) {
       return client.getItemContainer(InventoryID.INV);
     }
     if (widgetId == InterfaceID.Bankmain.ITEMS
@@ -632,7 +635,8 @@ public final class TokenDragIconRenderer {
         || id == InterfaceID.SharedBankSide.ITEMS
         || id == InterfaceID.Bankmain.ITEMS
         || id == InterfaceID.SharedBank.ITEMS
-        || id == InterfaceID.Bankmain.BANKTAGS_DISPLAY_ITEMS) {
+        || id == InterfaceID.Bankmain.BANKTAGS_DISPLAY_ITEMS
+        || id == InterfaceID.Tradeside.SIDE_LAYER) {
       return dragged.getChild(dragged.getIndex());
     }
     return dragged;
@@ -802,7 +806,8 @@ public final class TokenDragIconRenderer {
     int id = dragged.getId();
     return id == InterfaceID.Inventory.ITEMS
         || id == InterfaceID.Bankside.ITEMS
-        || id == InterfaceID.SharedBankSide.ITEMS;
+        || id == InterfaceID.SharedBankSide.ITEMS
+        || id == InterfaceID.Tradeside.SIDE_LAYER;
   }
 
   @Nullable

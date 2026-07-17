@@ -75,7 +75,9 @@ public final class TokenItemWidgetScopes {
         || groupId == InterfaceID.EQUIPMENT_SIDE
         || groupId == InterfaceID.WORNITEMS
         || groupId == InterfaceID.SHARED_BANK
-        || groupId == InterfaceID.SHARED_BANK_SIDE;
+        || groupId == InterfaceID.SHARED_BANK_SIDE
+        || groupId == InterfaceID.TRADEMAIN
+        || groupId == InterfaceID.TRADESIDE;
   }
 
   public static boolean isTokenItemComponent(int componentId) {

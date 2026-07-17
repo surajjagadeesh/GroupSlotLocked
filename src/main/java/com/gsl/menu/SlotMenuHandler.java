@@ -37,6 +37,9 @@ import net.runelite.client.util.ColorUtil;
 
 public class SlotMenuHandler {
   private static final Set<String> EQUIP_OPTIONS = Set.of("wear", "wield", "equip");
+  private static final int[] TRADE_CONFIRM_OFFER_WIDGETS = {
+    InterfaceID.Tradeconfirm.YOUR_OFFER, InterfaceID.Tradeconfirm.OTHER_OFFER,
+  };
   private int pendingSuppressTokenExamineItemId = -1;
   private int pendingSuppressTokenExamineUntilTick = -1;
   private final Client client;
@@ -139,6 +142,8 @@ public class SlotMenuHandler {
       clearPendingTokenExamineSuppression();
     }
 
+    relabelTradeConfirmText();
+
     if (client.isMenuOpen()) {
       return;
     }
@@ -149,6 +154,58 @@ public class SlotMenuHandler {
     if (applyTopHoverLabel(entries[entries.length - 1])) {
       client.getMenu().setMenuEntries(entries);
     }
+  }
+
+  /**
+   * The second trade confirmation screen ("You will give" / "You will receive") lists items as
+   * plain text on the dynamic children of {@code Tradeconfirm.YOUR_OFFER}/{@code OTHER_OFFER}
+   * (one child per offered item line), not as item-slot widgets — none of the menu/overlay hooks
+   * above apply to it. Rewrite the real cape name to the slot label directly in that text.
+   */
+  private void relabelTradeConfirmText() {
+    for (int componentId : TRADE_CONFIRM_OFFER_WIDGETS) {
+      Widget container = client.getWidget(componentId);
+      if (container == null) {
+        continue;
+      }
+      Widget[] children = container.getDynamicChildren();
+      if (children == null) {
+        continue;
+      }
+      for (Widget child : children) {
+        relabelWidgetText(child);
+      }
+    }
+  }
+
+  private void relabelWidgetText(@Nullable Widget widget) {
+    if (widget == null) {
+      return;
+    }
+    String text = widget.getText();
+    if (text == null || text.isEmpty()) {
+      return;
+    }
+    String relabeled = relabelTokenNames(text);
+    if (!relabeled.equals(text)) {
+      widget.setText(relabeled);
+    }
+  }
+
+  private String relabelTokenNames(String text) {
+    String result = text;
+    for (SlotType slot : SlotType.values()) {
+      String realName = itemManager.getItemComposition(slot.getTokenItemId()).getName();
+      if (realName == null || realName.isEmpty() || !result.contains(realName)) {
+        continue;
+      }
+      result =
+          result.replace(
+              realName,
+              ColorUtil.wrapWithColorTag(
+                  displayService.getHoverTargetText(slot, 1), JagexColors.MENU_TARGET));
+    }
+    return result;
   }
 
   @Subscribe(priority = Short.MAX_VALUE)

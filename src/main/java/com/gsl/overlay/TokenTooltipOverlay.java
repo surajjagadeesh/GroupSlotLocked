@@ -124,7 +124,9 @@ public class TokenTooltipOverlay extends Overlay {
         || group == InterfaceID.BANKSIDE
         || widget.getId() == InterfaceID.SharedBank.ITEMS
         || group == InterfaceID.SHARED_BANK
-        || group == InterfaceID.SHARED_BANK_SIDE) {
+        || group == InterfaceID.SHARED_BANK_SIDE
+        || group == InterfaceID.TRADEMAIN
+        || group == InterfaceID.TRADESIDE) {
       return widget.getItemId();
     }
 

@@ -28,3 +28,5 @@ Tracked ideas and follow-up work. Not yet implemented unless marked done.
 
 <!-- Future todos go below -->
 - [ ] possibly add the ability to customize which capes are used for tokens so players don't have to get exactly the ones we call for. this should be under an advanced tab. if not configurable, then just add an info box in the plugin settings that says which capes correspond to which slot token items. Also which guy sells them.
+- [ ] bug: when in group storage the scaperune teleport item still shows up on top of the slot icon overlay when dragging the item
+- [ ] bug: when moving an item from bank to inventory, the bank check has not yet run and it might still have a stale number like 5, when there now is a moved slot token in the inventory. So the text message of extra items will be displayed. We should probably delay the check for exceeding the limit until after the bank interface is closed.
