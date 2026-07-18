@@ -18,6 +18,11 @@ import net.runelite.client.ui.overlay.OverlayPosition;
  *
  * <p>Must use {@code drawAfterInterface}/{@code drawAfterLayer} so the cover is baked into the UI
  * texture before GPU compositing. {@code ALWAYS_ON_TOP} runs too early when the GPU plugin is on.
+ *
+ * <p>Exception: the inventory panel while group storage is open (SharedBankSide.ITEMS) isn't
+ * hooked here — its item layer doesn't redraw on a stationary press, so the hook never fires.
+ * That one container is covered by {@code TokenItemDragOverlay}'s {@code ALWAYS_ON_TOP} pass
+ * instead, via {@code TokenDragIconRenderer.renderSharedBankSideStationaryHoldCover}.
  */
 public class TokenPressHoldOverlay extends Overlay {
   private final Client client;
@@ -40,13 +45,11 @@ public class TokenPressHoldOverlay extends Overlay {
     setPriority(PRIORITY_HIGH);
     drawAfterInterface(InterfaceID.INVENTORY);
     drawAfterInterface(InterfaceID.BANKSIDE);
-    drawAfterInterface(InterfaceID.SHARED_BANK_SIDE);
     drawAfterInterface(InterfaceID.BANKMAIN);
     drawAfterInterface(InterfaceID.SHARED_BANK);
     drawAfterInterface(InterfaceID.TRADESIDE);
     drawAfterLayer(InterfaceID.Inventory.ITEMS);
     drawAfterLayer(InterfaceID.Bankside.ITEMS);
-    drawAfterLayer(InterfaceID.SharedBankSide.ITEMS);
     drawAfterLayer(InterfaceID.Bankmain.ITEMS);
     drawAfterLayer(InterfaceID.Bankmain.BANKTAGS_DISPLAY_ITEMS);
     drawAfterLayer(InterfaceID.SharedBank.ITEMS);

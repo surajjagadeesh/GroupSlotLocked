@@ -7,6 +7,7 @@ import com.gsl.service.SlotDisplayService;
 import com.gsl.util.BankItemUtils;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.runelite.api.Client;
 import net.runelite.api.Item;
@@ -43,11 +44,11 @@ public final class TokenDragIconRenderer {
     InterfaceID.SharedBank.ITEMS,
     InterfaceID.Bankmain.TABS,
   };
+  // SharedBankSide.ITEMS is deliberately excluded here: its drawAfterLayer hook never fires
+  // for a stationary (non-moving) press, so that case is handled exclusively by
+  // renderSharedBankSideStationaryHoldCover() on the ALWAYS_ON_TOP layer instead.
   private static final int[] INVENTORY_ITEM_CONTAINERS = {
-    InterfaceID.Inventory.ITEMS,
-    InterfaceID.Bankside.ITEMS,
-    InterfaceID.SharedBankSide.ITEMS,
-    InterfaceID.Tradeside.SIDE_LAYER,
+    InterfaceID.Inventory.ITEMS, InterfaceID.Bankside.ITEMS, InterfaceID.Tradeside.SIDE_LAYER,
   };
 
   private TokenDragIconRenderer() {}
@@ -652,24 +653,66 @@ public final class TokenDragIconRenderer {
       clearDragGrabOffset();
     }
     renderBankDragLayerIcons(graphics, client, itemManager, displayService);
-    renderActiveBankMainDragGhost(graphics, client, itemManager, displayService);
+    // Scoped to just the two containers confirmed to need a redundant ALWAYS_ON_TOP pass
+    // (see javadoc below) — NOT the broad isBankMainDragSource/isInventoryDragContainer checks.
+    // Doubling this pass over contexts where the drawAfterInterface ghost already renders
+    // correctly (regular inventory, regular bank grid) draws a second, slightly-offset icon
+    // because this pass's mouse-tracked bounds don't exactly match the game's own
+    // WidgetItem#getDraggingCanvasBounds() — visible as a lagging duplicate, not harmless.
+    renderActiveDragGhost(
+        graphics,
+        client,
+        itemManager,
+        displayService,
+        dragged -> dragged.getId() == InterfaceID.Bankmain.TABS);
+    renderActiveDragGhost(
+        graphics,
+        client,
+        itemManager,
+        displayService,
+        dragged -> dragged.getId() == InterfaceID.SharedBankSide.ITEMS);
+    renderSharedBankSideStationaryHoldCover(graphics, client, itemManager, displayService);
   }
 
   /**
-   * {@link TokenBankDragOverlay}'s ghost draws via {@code drawAfterInterface}, which some bank
-   * chrome (e.g. the tab header bar) still paints over while the drag crosses into it — the raw
-   * client drag sprite renders later than that and shows through. Redraw the ghost here too, on
-   * {@link net.runelite.client.ui.overlay.OverlayLayer#ALWAYS_ON_TOP}, so there's always a pass
-   * that's guaranteed to land after everything else. Harmless to double-draw over the grid, where
-   * the drawAfterInterface pass already renders it correctly.
+   * Covers the raw item sprite during a stationary (not-yet-moved) click-and-hold on the
+   * inventory panel while group storage is open. Unlike every other stationary-hold context,
+   * which is covered by {@link TokenPressHoldOverlay}'s {@code drawAfterLayer} pass,
+   * SharedBankSide.ITEMS's item layer does not appear to redraw on a truly stationary press, so
+   * that hook never fires here — this is the sole mechanism for this one container, not a
+   * redundant fallback.
    */
-  private static void renderActiveBankMainDragGhost(
+  private static void renderSharedBankSideStationaryHoldCover(
       Graphics2D graphics,
       Client client,
       ItemManager itemManager,
       SlotDisplayService displayService) {
+    if (!isLeftClickPressHold(client)) {
+      return;
+    }
     Widget dragged = client.getDraggedWidget();
-    if (dragged == null || !isBankMainDragSource(dragged)) {
+    if (dragged == null || dragged.getId() != InterfaceID.SharedBankSide.ITEMS) {
+      return;
+    }
+    renderSourceSlotHoldCover(graphics, client, itemManager, displayService, dragged, false);
+  }
+
+  /**
+   * {@link TokenBankDragOverlay}/{@link TokenInventoryDragOverlay}'s ghost draws via {@code
+   * drawAfterInterface}, which some UI chrome (the bank tab header bar, or the inventory side
+   * panel while group storage is open) still paints over while the drag crosses into it — the raw
+   * client drag sprite renders later than that and shows through. Redraw the ghost here too, on
+   * {@link net.runelite.client.ui.overlay.OverlayLayer#ALWAYS_ON_TOP}, so there's always a pass
+   * guaranteed to land after everything else.
+   */
+  private static void renderActiveDragGhost(
+      Graphics2D graphics,
+      Client client,
+      ItemManager itemManager,
+      SlotDisplayService displayService,
+      Predicate<Widget> isDragSource) {
+    Widget dragged = client.getDraggedWidget();
+    if (dragged == null || !isDragSource.test(dragged)) {
       return;
     }
     HeldItemDetails held = resolveHeldItemDetails(client, itemManager, dragged);
