@@ -12,12 +12,23 @@ import java.util.Optional;
 import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStats;
 
 @Singleton
 public class SlotValidator {
+  /**
+   * Ring-slot escape items exempt from the red "can't equip" highlight only — equipping them
+   * still requires the Ring slot token like any other gear.
+   */
+  private static final Set<Integer> ALWAYS_ALLOWED_ITEM_IDS =
+      Set.of(
+          ItemID.TOB_TELEPORT, // Escape crystal (Theatre of Blood)
+          ItemID.GAUNTLET_ESCAPE_CRYSTAL, // Escape crystal (The Gauntlet)
+          ItemID.GAUNTLET_ESCAPE_CRYSTAL_HM); // Corrupted escape crystal (Corrupted Gauntlet)
+
   private final GroupSlotLockedConfig config;
   private final ItemManager itemManager;
 
@@ -60,7 +71,7 @@ public class SlotValidator {
       return Violation.NONE;
     }
     int canonicalId = itemManager.canonicalize(itemId);
-    if (SlotType.isTokenItem(canonicalId)) {
+    if (SlotType.isTokenItem(canonicalId) || ALWAYS_ALLOWED_ITEM_IDS.contains(canonicalId)) {
       return Violation.NONE;
     }
     return validateEquip(state, canonicalId).getViolation();
