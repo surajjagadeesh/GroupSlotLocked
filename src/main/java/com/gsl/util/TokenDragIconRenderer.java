@@ -476,45 +476,6 @@ public final class TokenDragIconRenderer {
     }
   }
 
-  public static void renderInventoryDragWidgetItemIcon(
-      Graphics2D graphics,
-      Client client,
-      ItemManager itemManager,
-      SlotDisplayService displayService,
-      int itemId,
-      WidgetItem widgetItem) {
-    if (!shouldDrawDragGhost(client, widgetItem)
-        || isBankMainSourceWidget(widgetItem.getWidget())) {
-      return;
-    }
-    renderDragWidgetItemIcon(graphics, client, itemManager, displayService, itemId, widgetItem);
-  }
-
-  public static void renderBankDragWidgetItemIcon(
-      Graphics2D graphics,
-      Client client,
-      ItemManager itemManager,
-      SlotDisplayService displayService,
-      int itemId,
-      WidgetItem widgetItem) {
-    if (!shouldDrawDragGhost(client, widgetItem)
-        || !isBankMainSourceWidget(widgetItem.getWidget())) {
-      return;
-    }
-    renderDragWidgetItemIcon(graphics, client, itemManager, displayService, itemId, widgetItem);
-  }
-
-  private static void renderDragWidgetItemIcon(
-      Graphics2D graphics,
-      Client client,
-      ItemManager itemManager,
-      SlotDisplayService displayService,
-      int itemId,
-      WidgetItem widgetItem) {
-    renderDragWidgetItemIcon(
-        graphics, client, itemManager, displayService, itemId, widgetItem.getQuantity(), widgetItem);
-  }
-
   private static void renderDragWidgetItemIcon(
       Graphics2D graphics,
       Client client,
@@ -548,14 +509,6 @@ public final class TokenDragIconRenderer {
           quantity,
           TokenIconRenderContext.DRAG_AT_CURSOR);
     }
-  }
-
-  public static boolean isItemBeingDragged(Client client, WidgetItem widgetItem) {
-    return isDraggedWidgetItem(client, widgetItem);
-  }
-
-  private static boolean isDraggedWidgetItem(Client client, WidgetItem widgetItem) {
-    return widgetItem.getDraggingCanvasBounds() != null;
   }
 
   private static boolean shouldDrawDragGhost(Client client, WidgetItem widgetItem) {
@@ -755,22 +708,6 @@ public final class TokenDragIconRenderer {
       }
     }
     return drew;
-  }
-
-  public static void renderPressedInventoryItemIcon(
-      Graphics2D graphics,
-      Client client,
-      ItemManager itemManager,
-      SlotDisplayService displayService) {
-    renderStationaryHoldCover(graphics, client, itemManager, displayService);
-  }
-
-  public static void renderPressedBankItemIcon(
-      Graphics2D graphics,
-      Client client,
-      ItemManager itemManager,
-      SlotDisplayService displayService) {
-    renderStationaryHoldCover(graphics, client, itemManager, displayService);
   }
 
   public static void drawTokenIcon(
