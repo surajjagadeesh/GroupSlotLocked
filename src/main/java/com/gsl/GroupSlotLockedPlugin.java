@@ -40,8 +40,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 @PluginDescriptor(
     name = "Group Slot Locked",
     description = "Slot token requirements and equip limits for group ironman teams",
-    tags = {"ironman", "group", "equipment"},
-    enabledByDefault = false)
+    tags = {"ironman", "group", "equipment"})
 public class GroupSlotLockedPlugin extends Plugin {
   @Inject private Client client;
   @Inject private SlotStateService slotStateService;

@@ -2,8 +2,6 @@
 
 A RuneLite plugin for **voluntary Group Ironman challenge rules** where each player can only equip gear slots they have "claimed" with slot tokens.
 
-The plugin is **disabled by default**. Enable it from the RuneLite plugin panel when your team wants to use these self-imposed limits.
-
 ## How it works
 
 Each equipment slot (head, cape, amulet, weapon, body, shield, legs, gloves, boots, ring, ammo) can be represented by a Wilderness team cape token. While playing with this plugin enabled, you can enforce rules such as:
