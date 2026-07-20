@@ -10,7 +10,7 @@ Each equipment slot (head, cape, amulet, weapon, body, shield, legs, gloves, boo
 - Equip at most **5** tracked gear slots at once
 - Only equip a slot if you currently hold that slot's token (and it is not in group storage)
 
-These limits are enforced locally as a challenge helper. The plugin does not modify game actions sent to the server unless you choose optional click-blocking behavior in settings.
+These limits are enforced locally as a challenge helper. The plugin does not modify game actions sent to the server.
 
 ## Features
 
